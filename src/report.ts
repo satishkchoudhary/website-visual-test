@@ -139,6 +139,9 @@ function renderHtmlReport(run: VisualRunResult): string {
       tr:last-child td {
         border-bottom: 0;
       }
+      tr[hidden] {
+        display: none !important;
+      }
       .status-passed {
         color: #067647;
         font-weight: 700;
@@ -150,6 +153,75 @@ function renderHtmlReport(run: VisualRunResult): string {
       .status-skipped {
         color: #6941c6;
         font-weight: 700;
+      }
+      .result-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: 12px;
+        margin: 0 0 12px;
+      }
+      .segmented {
+        display: flex;
+        flex-wrap: wrap;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .segmented button {
+        border: 0;
+        border-right: 1px solid #cbd5e1;
+        padding: 9px 12px;
+        background: #fff;
+        color: #152033;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .segmented button:last-child {
+        border-right: 0;
+      }
+      .segmented button[aria-pressed="true"] {
+        background: #1769aa;
+        color: #fff;
+      }
+      .segmented span {
+        margin-left: 4px;
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      .result-search {
+        display: grid;
+        gap: 6px;
+        min-width: min(320px, 100%);
+        color: #344054;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .result-search input {
+        min-height: 38px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 8px 10px;
+        color: #152033;
+        font: inherit;
+      }
+      .result-search input:focus,
+      .segmented button:focus-visible {
+        outline: 3px solid #1b75bb;
+        outline-offset: 2px;
+      }
+      .filter-count {
+        color: #475467;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .empty {
+        color: #667085;
+        padding: 22px;
+        text-align: center;
       }
       .shots {
         display: grid;
@@ -290,6 +362,16 @@ function renderHtmlReport(run: VisualRunResult): string {
         .lightbox-controls {
           flex-wrap: wrap;
         }
+        .result-tools {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .segmented {
+          width: 100%;
+        }
+        .segmented button {
+          flex: 1 1 auto;
+        }
       }
     </style>
   </head>
@@ -320,6 +402,19 @@ function renderHtmlReport(run: VisualRunResult): string {
         </ul>
       </section>
       <h2>Comparison Details</h2>
+      <div class="result-tools" data-result-filters>
+        <div class="segmented" role="group" aria-label="Filter results by status">
+          ${statusFilterButton("all", "All", run.summary.comparisons, true)}
+          ${statusFilterButton("failed", "Failed", run.summary.failed)}
+          ${statusFilterButton("passed", "Success", run.summary.passed)}
+          ${statusFilterButton("error", "Errors", run.summary.errors)}
+          ${statusFilterButton("skipped", "Skipped", run.summary.skipped)}
+        </div>
+        <label class="result-search">Search
+          <input id="resultSearch" autocomplete="off" placeholder="Page, viewport, URL, or note">
+        </label>
+        <span id="resultFilterCount" class="filter-count"></span>
+      </div>
       <table>
         <thead>
           <tr>
@@ -334,6 +429,7 @@ function renderHtmlReport(run: VisualRunResult): string {
         </thead>
         <tbody>
           ${rows}
+          <tr id="resultNoMatches" hidden><td class="empty" colspan="7">No results match.</td></tr>
         </tbody>
       </table>
     </main>
@@ -359,6 +455,12 @@ function renderHtmlReport(run: VisualRunResult): string {
         const title = document.getElementById("lightboxTitle");
         const openLink = document.getElementById("lightboxOpen");
         const stage = document.getElementById("lightboxStage");
+        const resultRows = Array.from(document.querySelectorAll("[data-result-row]"));
+        const filterButtons = Array.from(document.querySelectorAll("[data-status-filter]"));
+        const searchInput = document.getElementById("resultSearch");
+        const filterCount = document.getElementById("resultFilterCount");
+        const noMatches = document.getElementById("resultNoMatches");
+        let activeStatus = "all";
         let zoom = 1;
 
         function applyZoom() {
@@ -386,6 +488,22 @@ function renderHtmlReport(run: VisualRunResult): string {
           document.body.style.overflow = "";
         }
 
+        function applyResultFilters() {
+          const query = (searchInput.value || "").trim().toLowerCase();
+          let visible = 0;
+
+          resultRows.forEach((row) => {
+            const statusMatches = activeStatus === "all" || row.dataset.status === activeStatus;
+            const queryMatches = !query || (row.dataset.filterText || "").includes(query);
+            const shouldShow = statusMatches && queryMatches;
+            row.hidden = !shouldShow;
+            if (shouldShow) visible += 1;
+          });
+
+          if (filterCount) filterCount.textContent = "Showing " + visible + " of " + resultRows.length;
+          if (noMatches) noMatches.hidden = visible !== 0;
+        }
+
         document.addEventListener("click", (event) => {
           const previewButton = event.target.closest("[data-lightbox-src]");
           if (previewButton) {
@@ -408,6 +526,20 @@ function renderHtmlReport(run: VisualRunResult): string {
           applyZoom();
         });
 
+        filterButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            activeStatus = button.dataset.statusFilter || "all";
+            filterButtons.forEach((candidate) => {
+              candidate.setAttribute("aria-pressed", String(candidate === button));
+            });
+            applyResultFilters();
+          });
+        });
+
+        if (searchInput) {
+          searchInput.addEventListener("input", applyResultFilters);
+        }
+
         lightbox.addEventListener("click", (event) => {
           if (event.target === lightbox) closePreview();
         });
@@ -417,6 +549,8 @@ function renderHtmlReport(run: VisualRunResult): string {
             closePreview();
           }
         });
+
+        applyResultFilters();
       })();
     </script>
   </body>
@@ -490,7 +624,7 @@ function renderMarkdownReport(run: VisualRunResult): string {
 }
 
 function resultRow(runDir: string, result: ComparisonResult): string {
-  return `<tr>
+  return `<tr data-result-row data-status="${escapeAttr(result.status)}" data-filter-text="${escapeAttr(resultFilterText(result))}">
   <td>${escapeHtml(result.path)}</td>
   <td>${finalUrlsCell(result)}</td>
   <td>${escapeHtml(result.viewport.name)}<br><small>${result.viewport.width}x${result.viewport.height}</small></td>
@@ -507,6 +641,10 @@ function resultRow(runDir: string, result: ComparisonResult): string {
 </tr>`;
 }
 
+function statusFilterButton(status: string, label: string, count: number, active = false): string {
+  return `<button type="button" data-status-filter="${escapeAttr(status)}" aria-pressed="${active ? "true" : "false"}">${escapeHtml(label)} <span>${count}</span></button>`;
+}
+
 function finalUrlsCell(result: ComparisonResult): string {
   const finalUrls = finalUrlsFor(result);
   return `<span class="url-pair">
@@ -520,6 +658,21 @@ function finalUrlsFor(result: ComparisonResult): { baseline: string; target: str
     baseline: result.finalUrls?.baseline || result.baselineUrl,
     target: result.finalUrls?.target || result.targetUrl,
   };
+}
+
+function resultFilterText(result: ComparisonResult): string {
+  const finalUrls = finalUrlsFor(result);
+  return [
+    result.path,
+    result.viewport.name,
+    `${result.viewport.width}x${result.viewport.height}`,
+    result.status,
+    result.error ?? "",
+    result.baselineUrl,
+    result.targetUrl,
+    finalUrls.baseline,
+    finalUrls.target,
+  ].join(" ").toLowerCase();
 }
 
 function figure(label: string, runDir: string, filePath: string): string {

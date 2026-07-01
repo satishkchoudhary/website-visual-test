@@ -51,6 +51,8 @@ During a comparison, the dashboard also fills **Live Results** as each page and 
 
 Each comparison row includes the final post-redirect baseline and target URLs plus the time taken for that page/viewport check.
 
+Live and generated HTML reports include status filters and search across page, viewport, URL, and notes.
+
 ## Commands
 
 ```sh

@@ -362,6 +362,57 @@ export function renderUi(): string {
       .result-links a {
         font-weight: 800;
       }
+      .result-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: 12px;
+        border-bottom: 1px solid #e5ebf3;
+        background: #f8fafc;
+        padding: 12px 16px;
+      }
+      .segmented {
+        display: flex;
+        flex-wrap: wrap;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .segmented button {
+        min-height: 36px;
+        border: 0;
+        border-right: 1px solid #cbd5e1;
+        border-radius: 0;
+        padding: 8px 11px;
+        background: #fff;
+        color: #152033;
+        font-size: 13px;
+      }
+      .segmented button:last-child {
+        border-right: 0;
+      }
+      .segmented button[aria-pressed="true"] {
+        background: #1769aa;
+        color: #fff;
+      }
+      .segmented span {
+        margin-left: 4px;
+        font-size: 12px;
+        opacity: 0.82;
+      }
+      .result-search {
+        min-width: min(320px, 100%);
+      }
+      .result-search input {
+        min-height: 36px;
+        background: #fff;
+      }
+      .filter-count {
+        color: #475467;
+        font-size: 13px;
+        font-weight: 900;
+      }
       .url-pair {
         display: grid;
         gap: 6px;
@@ -424,6 +475,16 @@ export function renderUi(): string {
         .status-strip,
         .viewport-list {
           grid-template-columns: 1fr;
+        }
+        .result-tools {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .segmented {
+          width: 100%;
+        }
+        .segmented button {
+          flex: 1 1 auto;
         }
       }
     </style>
@@ -545,6 +606,19 @@ export function renderUi(): string {
               <h2>Live Results</h2>
               <span id="liveSummary" class="live-summary">0/0</span>
             </div>
+            <div class="result-tools">
+              <div class="segmented" role="group" aria-label="Filter live results by status">
+                <button type="button" data-live-status-filter="all" data-label="All" aria-pressed="true">All <span>0</span></button>
+                <button type="button" data-live-status-filter="failed" data-label="Failed" aria-pressed="false">Failed <span>0</span></button>
+                <button type="button" data-live-status-filter="passed" data-label="Success" aria-pressed="false">Success <span>0</span></button>
+                <button type="button" data-live-status-filter="error" data-label="Errors" aria-pressed="false">Errors <span>0</span></button>
+                <button type="button" data-live-status-filter="skipped" data-label="Skipped" aria-pressed="false">Skipped <span>0</span></button>
+              </div>
+              <label class="result-search">Search
+                <input id="liveResultSearch" autocomplete="off" placeholder="Page, viewport, URL, or note">
+              </label>
+              <span id="liveFilterCount" class="filter-count">Showing 0 of 0</span>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -628,6 +702,10 @@ export function renderUi(): string {
     <script>
       const state = {
         currentJob: null,
+        liveResults: null,
+        liveStatus: "",
+        liveStatusFilter: "all",
+        liveSearchQuery: "",
         pollTimer: null,
         presets: [],
       };
@@ -743,11 +821,15 @@ export function renderUi(): string {
       }
 
       function renderLiveResults(liveResults, status) {
+        state.liveResults = liveResults;
+        state.liveStatus = status || "";
         const rows = document.getElementById("liveResultRows");
         const summary = document.getElementById("liveSummary");
 
         if (!liveResults) {
           summary.textContent = "0/0";
+          updateLiveFilterCounts(null, 0);
+          updateLiveFilterCount(0, 0);
           rows.innerHTML = '<tr><td class="empty" colspan="7">No comparison results yet.</td></tr>';
           return;
         }
@@ -755,13 +837,25 @@ export function renderUi(): string {
         const total = liveResults.total || 0;
         const completed = liveResults.completed || 0;
         summary.textContent = completed + "/" + total;
+        const allResults = liveResults.results || [];
+        updateLiveFilterCounts(liveResults.summary, allResults.length);
 
-        if (!liveResults.results || !liveResults.results.length) {
+        if (!allResults.length) {
+          updateLiveFilterCount(0, 0);
           rows.innerHTML = '<tr><td class="empty" colspan="7">' + (status === "running" ? "Waiting for first result." : "No comparison results yet.") + '</td></tr>';
           return;
         }
 
-        rows.innerHTML = liveResults.results.slice().reverse().slice(0, 150).map((item) => (
+        const filteredResults = allResults.slice().reverse().filter(matchesLiveResultFilters);
+        const rowsToShow = filteredResults.slice(0, 150);
+        updateLiveFilterCount(rowsToShow.length, allResults.length, filteredResults.length);
+
+        if (!filteredResults.length) {
+          rows.innerHTML = '<tr><td class="empty" colspan="7">No results match.</td></tr>';
+          return;
+        }
+
+        rows.innerHTML = rowsToShow.map((item) => (
           '<tr>' +
           '<td><code>' + escapeHtml(item.path) + '</code></td>' +
           '<td>' + renderFinalUrls(item) + '</td>' +
@@ -771,7 +865,58 @@ export function renderUi(): string {
           '<td>' + formatDuration(item.durationMs) + '</td>' +
           '<td>' + renderEvidenceLinks(item) + '</td>' +
           '</tr>'
-        )).join("");
+        )).join("") + (filteredResults.length > rowsToShow.length
+          ? '<tr><td class="empty" colspan="7">Showing first 150 matches.</td></tr>'
+          : '');
+      }
+
+      function updateLiveFilterCounts(summary, totalResults) {
+        const counts = {
+          all: totalResults,
+          failed: summary && Number.isFinite(Number(summary.failed)) ? summary.failed : 0,
+          passed: summary && Number.isFinite(Number(summary.passed)) ? summary.passed : 0,
+          error: summary && Number.isFinite(Number(summary.errors)) ? summary.errors : 0,
+          skipped: summary && Number.isFinite(Number(summary.skipped)) ? summary.skipped : 0,
+        };
+
+        document.querySelectorAll("[data-live-status-filter]").forEach((button) => {
+          const label = button.dataset.label || button.dataset.liveStatusFilter || "";
+          const status = button.dataset.liveStatusFilter || "all";
+          button.innerHTML = escapeHtml(label) + " <span>" + escapeHtml(counts[status] || 0) + "</span>";
+        });
+      }
+
+      function updateLiveFilterCount(visible, total, matched) {
+        const count = document.getElementById("liveFilterCount");
+        if (!count) return;
+        const matchedCount = matched === undefined ? visible : matched;
+        count.textContent = matchedCount === visible
+          ? "Showing " + visible + " of " + total
+          : "Showing " + visible + " of " + matchedCount + " matches";
+      }
+
+      function matchesLiveResultFilters(item) {
+        const activeStatus = state.liveStatusFilter || "all";
+        const statusMatches = activeStatus === "all" || item.status === activeStatus;
+        const query = (state.liveSearchQuery || "").trim().toLowerCase();
+        if (!statusMatches) return false;
+        if (!query) return true;
+        return liveResultFilterText(item).includes(query);
+      }
+
+      function liveResultFilterText(item) {
+        const finalUrls = item.finalUrls || {};
+        return [
+          item.path,
+          item.viewport,
+          item.viewportSize,
+          item.status,
+          item.error || "",
+          item.baselineUrl || "",
+          item.targetUrl || "",
+          finalUrls.baseline || "",
+          finalUrls.target || "",
+        ].join(" ").toLowerCase();
       }
 
       function renderFinalUrls(item) {
@@ -1049,6 +1194,19 @@ export function renderUi(): string {
       document.getElementById("presetSelect").addEventListener("change", () => {
         const preset = selectedPreset();
         document.getElementById("presetName").value = preset ? preset.name : "";
+      });
+      document.querySelectorAll("[data-live-status-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.liveStatusFilter = button.dataset.liveStatusFilter || "all";
+          document.querySelectorAll("[data-live-status-filter]").forEach((candidate) => {
+            candidate.setAttribute("aria-pressed", String(candidate === button));
+          });
+          renderLiveResults(state.liveResults, state.liveStatus);
+        });
+      });
+      document.getElementById("liveResultSearch").addEventListener("input", (event) => {
+        state.liveSearchQuery = event.target.value || "";
+        renderLiveResults(state.liveResults, state.liveStatus);
       });
       loadInventory();
       loadHistory();

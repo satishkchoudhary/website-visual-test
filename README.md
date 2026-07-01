@@ -55,6 +55,7 @@ The dashboard lets users:
 - Watch a live progress bar, current step, and timestamped job log.
 - Review live comparison rows as each page and viewport finishes.
 - See final post-redirect baseline and target URLs plus duration for each comparison.
+- Filter live and report results by status, page, viewport, URL, or note.
 - Auto-dismiss common cookie banners and wait for images before screenshots.
 - Run a system preflight check from the UI.
 - Review URL inventory and past test runs.
