@@ -8,7 +8,6 @@ import type { UrlInventory, VisualConfig, VisualRunResult } from "../types.js";
 import { extractUrls } from "../urlExtractor.js";
 import { generateReports } from "../report.js";
 import { runVisualTest } from "../visualTest.js";
-import { runVisualWorkflow } from "../workflow.js";
 import { renderUi } from "./ui.js";
 
 type JobAction = "extract" | "compare" | "full";
@@ -20,9 +19,18 @@ interface JobRecord {
   status: JobStatus;
   createdAt: string;
   updatedAt: string;
+  progress: JobProgress;
   logs: string[];
   result?: unknown;
   error?: string;
+}
+
+interface JobProgress {
+  percent: number;
+  label: string;
+  detail: string;
+  completed?: number;
+  total?: number;
 }
 
 interface JobOptions {
@@ -162,35 +170,75 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 async function runJob(job: JobRecord, options: JobOptions): Promise<void> {
   job.status = "running";
   job.updatedAt = new Date().toISOString();
-  log(job, "Building configuration.");
+  setProgress(job, 3, "Preparing job", "Building configuration.", { log: true });
   const config = await configFromOptions(options);
+  setProgress(job, 8, "Configuration ready", `${config.baselineUrl} vs ${config.targetUrl}.`, { log: true });
 
   if (job.action === "extract") {
-    log(job, "Extracting URLs.");
-    const inventory = await extractUrls(config);
-    log(job, `Extracted ${inventory.urls.length} URL(s).`);
+    const inventory = await extractForJob(job, config, 15, 92);
     job.result = { inventory };
   }
 
   if (job.action === "compare") {
-    log(job, "Running screenshot comparison from current checklist.");
-    const visualRun = await runVisualTest(config);
-    log(job, `Compared ${visualRun.summary.comparisons} screenshot pair(s).`);
+    const visualRun = await compareForJob(job, config, 12, 88);
+    setProgress(job, 94, "Creating report", "Writing HTML and Markdown reports.", { log: true });
     const reports = await generateReports(config, visualRun);
-    log(job, `Report created at ${reports.htmlPath}.`);
+    setProgress(job, 98, "Report ready", reports.htmlPath, { log: true });
     job.result = { visualRun, reports };
   }
 
   if (job.action === "full") {
-    log(job, "Extracting URLs and running comparison.");
-    const result = await runVisualWorkflow(config);
-    log(job, `Compared ${result.visualRun.summary.comparisons} screenshot pair(s).`);
-    log(job, `Report created at ${result.reports.htmlPath}.`);
-    job.result = result;
+    const inventory = await extractForJob(job, config, 12, 28);
+    const visualRun = await compareForJob(job, config, 30, 88);
+    setProgress(job, 94, "Creating report", "Writing HTML and Markdown reports.", { log: true });
+    const reports = await generateReports(config, visualRun);
+    setProgress(job, 98, "Report ready", reports.htmlPath, { log: true });
+    job.result = { inventory, visualRun, reports };
   }
 
+  setProgress(job, 100, "Complete", "Job completed.", { log: true });
   job.status = "completed";
   job.updatedAt = new Date().toISOString();
+}
+
+async function extractForJob(job: JobRecord, config: VisualConfig, startPercent: number, endPercent: number): Promise<UrlInventory> {
+  const sourceLabel = config.urlSource === "both" ? "sitemaps and crawl" : config.urlSource;
+  setProgress(job, startPercent, "Discovering URLs", `Reading ${sourceLabel} sources.`, { log: true });
+  const inventory = await extractUrls(config);
+  setProgress(job, endPercent, "URLs ready", `Found ${inventory.urls.length} URL(s).`, {
+    completed: inventory.urls.length,
+    log: true,
+    total: config.maxPages,
+  });
+  return inventory;
+}
+
+async function compareForJob(job: JobRecord, config: VisualConfig, startPercent: number, endPercent: number): Promise<VisualRunResult> {
+  setProgress(job, startPercent, "Loading checklist", "Preparing screenshot queue.", { log: true });
+
+  return runVisualTest(config, {
+    onProgress: (event) => {
+      const total = Math.max(event.total, 1);
+      const activeIndex = event.phase === "started" ? event.completed + 1 : event.completed;
+      const percent = startPercent + Math.round((event.completed / total) * (endPercent - startPercent));
+      const detail = `${activeIndex}/${event.total}: ${event.page.path} (${event.viewport.name})`;
+
+      if (event.phase === "started") {
+        setProgress(job, percent, "Capturing screenshots", detail, {
+          completed: event.completed,
+          total: event.total,
+        });
+        return;
+      }
+
+      const resultStatus = event.result?.status || "completed";
+      setProgress(job, percent, `Compared ${event.completed}/${event.total}`, `${event.page.path} (${event.viewport.name}) ${resultStatus}.`, {
+        completed: event.completed,
+        log: true,
+        total: event.total,
+      });
+    },
+  });
 }
 
 async function configFromOptions(options: JobOptions): Promise<VisualConfig> {
@@ -217,10 +265,33 @@ function createJob(action: JobAction): JobRecord {
     status: "queued",
     createdAt: now,
     updatedAt: now,
+    progress: {
+      percent: 0,
+      label: "Queued",
+      detail: "Waiting to start.",
+    },
     logs: [],
   };
   jobs.set(job.id, job);
   return job;
+}
+
+function setProgress(
+  job: JobRecord,
+  percent: number,
+  label: string,
+  detail = "",
+  options: { completed?: number; log?: boolean; total?: number } = {},
+): void {
+  job.progress = {
+    percent: Math.max(0, Math.min(100, percent)),
+    label,
+    detail,
+    ...(options.completed !== undefined ? { completed: options.completed } : {}),
+    ...(options.total !== undefined ? { total: options.total } : {}),
+  };
+  job.updatedAt = new Date().toISOString();
+  if (options.log) log(job, detail ? `${label}: ${detail}` : label);
 }
 
 function log(job: JobRecord, message: string): void {
@@ -229,7 +300,7 @@ function log(job: JobRecord, message: string): void {
 }
 
 function failJob(job: JobRecord, message: string): void {
-  log(job, message);
+  setProgress(job, job.progress.percent, "Failed", message, { log: true });
   job.error = message;
   job.status = "failed";
   job.updatedAt = new Date().toISOString();

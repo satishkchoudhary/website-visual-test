@@ -188,6 +188,60 @@ export function renderUi(): string {
         background: #fee2e2;
         color: #991b1b;
       }
+      .progress-card {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 14px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 12px;
+      }
+      .progress-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #152033;
+      }
+      .progress-line strong {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .progress-line span {
+        color: #475467;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .progress-track {
+        height: 12px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #dbe5ef;
+      }
+      .progress-track span {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: #1769aa;
+        transition: width 220ms ease;
+      }
+      .progress-track.completed span {
+        background: #16a34a;
+      }
+      .progress-track.failed span {
+        background: #dc2626;
+      }
+      .progress-detail {
+        min-height: 20px;
+        margin: 0;
+        color: #475467;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
       .log {
         height: 210px;
         overflow: auto;
@@ -328,6 +382,16 @@ export function renderUi(): string {
               <span id="jobBadge" class="badge">Idle</span>
             </div>
             <div class="panel-body">
+              <div class="progress-card">
+                <div class="progress-line">
+                  <strong id="progressLabel">Ready</strong>
+                  <span id="progressPercent">0%</span>
+                </div>
+                <div id="progressTrack" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <span id="progressFill"></span>
+                </div>
+                <p id="progressDetail" class="progress-detail">Idle.</p>
+              </div>
               <div id="log" class="log">Ready.</div>
               <div class="links">
                 <a class="link-button" href="/visual/urls.md" target="_blank" rel="noreferrer">URL Inventory</a>
@@ -414,7 +478,9 @@ export function renderUi(): string {
       }
 
       async function startJob(action) {
+        if (state.pollTimer) window.clearTimeout(state.pollTimer);
         setBusy(true);
+        setProgress({ percent: 3, label: "Starting", detail: labelFor(action) + " is being queued." }, "running");
         setLog("Starting " + labelFor(action) + "...");
         setBadge("running");
 
@@ -428,6 +494,7 @@ export function renderUi(): string {
         if (!response.ok) {
           setBusy(false);
           setBadge("failed");
+          setProgress({ percent: 100, label: "Failed", detail: body.error || "Unable to start job." }, "failed");
           setLog(body.error || "Unable to start job.");
           return;
         }
@@ -440,6 +507,13 @@ export function renderUi(): string {
         if (!state.currentJob) return;
         const response = await fetch("/api/jobs/" + encodeURIComponent(state.currentJob));
         const job = await response.json();
+        if (!response.ok) {
+          setBusy(false);
+          setBadge("failed");
+          setProgress({ percent: 100, label: "Failed", detail: job.error || "Job not found." }, "failed");
+          setLog(job.error || "Job not found.");
+          return;
+        }
         renderJob(job);
 
         if (job.status === "running" || job.status === "queued") {
@@ -453,6 +527,7 @@ export function renderUi(): string {
 
       function renderJob(job) {
         setBadge(job.status);
+        setProgress(job.progress, job.status);
         setLog(job.logs.join("\\n") || job.status);
 
         const result = job.result || {};
@@ -523,6 +598,21 @@ export function renderUi(): string {
         badge.textContent = status;
       }
 
+      function setProgress(progress, status) {
+        const percent = clampPercent(progress && typeof progress.percent === "number" ? progress.percent : 0);
+        const label = progress && progress.label ? progress.label : titleCase(status || "idle");
+        const detail = progress && progress.detail ? progress.detail : "";
+        const track = document.getElementById("progressTrack");
+
+        document.getElementById("progressLabel").textContent = label;
+        document.getElementById("progressPercent").textContent = percent + "%";
+        document.getElementById("progressFill").style.width = percent + "%";
+        document.getElementById("progressDetail").textContent = detail || "Idle.";
+        track.className = "progress-track " + (status || "");
+        track.setAttribute("aria-valuenow", String(percent));
+        track.setAttribute("aria-label", label);
+      }
+
       function setLog(text) {
         const log = document.getElementById("log");
         log.textContent = text;
@@ -533,6 +623,16 @@ export function renderUi(): string {
         if (action === "extract") return "URL extraction";
         if (action === "compare") return "comparison";
         return "full workflow";
+      }
+
+      function clampPercent(value) {
+        return Math.max(0, Math.min(100, Math.round(value)));
+      }
+
+      function titleCase(value) {
+        return String(value || "")
+          .replace(/-/g, " ")
+          .replace(/\\b\\w/g, (letter) => letter.toUpperCase());
       }
 
       function escapeHtml(value) {

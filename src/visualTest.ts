@@ -16,18 +16,47 @@ import { loadPagesForRun } from "./lib/pageManifest.js";
 import { openStablePage, screenshotMaskLocators } from "./lib/pageActions.js";
 import { comparisonDir, createRunDir, updateLatestPointer } from "./lib/runPaths.js";
 
-export async function runVisualTest(config: VisualConfig): Promise<VisualRunResult> {
+export interface VisualTestProgressEvent {
+  phase: "started" | "completed";
+  completed: number;
+  total: number;
+  page: PageEntry;
+  viewport: VisualViewport;
+  result?: ComparisonResult;
+}
+
+export interface RunVisualTestOptions {
+  onProgress?: (event: VisualTestProgressEvent) => void | Promise<void>;
+}
+
+export async function runVisualTest(config: VisualConfig, options: RunVisualTestOptions = {}): Promise<VisualRunResult> {
   const startedAt = new Date().toISOString();
   const manifest = await loadPagesForRun(config);
   const runDir = await createRunDir(config);
   const browser = await chromium.launch();
   const results: ComparisonResult[] = [];
+  const total = manifest.pages.length * config.viewports.length;
 
   try {
     for (const pageEntry of manifest.pages) {
       for (const viewport of config.viewports) {
+        await options.onProgress?.({
+          phase: "started",
+          completed: results.length,
+          total,
+          page: pageEntry,
+          viewport,
+        });
         const result = await comparePageViewport(browser, config, runDir, pageEntry, viewport);
         results.push(result);
+        await options.onProgress?.({
+          phase: "completed",
+          completed: results.length,
+          total,
+          page: pageEntry,
+          viewport,
+          result,
+        });
       }
     }
   } finally {
