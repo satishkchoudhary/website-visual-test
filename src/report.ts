@@ -172,6 +172,81 @@ function renderHtmlReport(run: VisualRunResult): string {
         border-radius: 6px;
         background: #fff;
       }
+      .shot-button {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: zoom-in;
+        text-align: left;
+      }
+      .shot-button:focus-visible {
+        outline: 3px solid #1b75bb;
+        outline-offset: 3px;
+        border-radius: 8px;
+      }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: none;
+        grid-template-rows: auto 1fr;
+        background: rgb(8 13 24 / 88%);
+        color: #fff;
+      }
+      .lightbox[data-open="true"] {
+        display: grid;
+      }
+      .lightbox-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgb(255 255 255 / 16%);
+        background: rgb(8 13 24 / 92%);
+      }
+      .lightbox-title {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      .lightbox-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .lightbox-controls button,
+      .lightbox-controls a {
+        min-width: 38px;
+        border: 1px solid rgb(255 255 255 / 28%);
+        border-radius: 6px;
+        padding: 7px 10px;
+        background: rgb(255 255 255 / 10%);
+        color: #fff;
+        font: inherit;
+        text-align: center;
+        text-decoration: none;
+      }
+      .lightbox-controls button {
+        cursor: pointer;
+      }
+      .lightbox-stage {
+        overflow: auto;
+        padding: 22px;
+      }
+      .lightbox-image {
+        display: block;
+        width: 100%;
+        max-width: none;
+        margin: 0 auto;
+        border: 0;
+        border-radius: 4px;
+        background: #fff;
+      }
       code {
         background: #eef3f8;
         border-radius: 4px;
@@ -193,6 +268,13 @@ function renderHtmlReport(run: VisualRunResult): string {
         .shots {
           min-width: 0;
           grid-template-columns: 1fr;
+        }
+        .lightbox-bar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .lightbox-controls {
+          flex-wrap: wrap;
         }
       }
     </style>
@@ -239,6 +321,88 @@ function renderHtmlReport(run: VisualRunResult): string {
         </tbody>
       </table>
     </main>
+    <div class="lightbox" id="lightbox" aria-modal="true" role="dialog" aria-label="Screenshot preview">
+      <div class="lightbox-bar">
+        <div class="lightbox-title" id="lightboxTitle"></div>
+        <div class="lightbox-controls">
+          <button type="button" data-zoom="out" aria-label="Zoom out">-</button>
+          <button type="button" data-zoom="reset" aria-label="Reset zoom">100%</button>
+          <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+          <a id="lightboxOpen" href="#" target="_blank" rel="noreferrer">Open PNG</a>
+          <button type="button" data-lightbox-close aria-label="Close preview">Close</button>
+        </div>
+      </div>
+      <div class="lightbox-stage" id="lightboxStage">
+        <img class="lightbox-image" id="lightboxImage" alt="">
+      </div>
+    </div>
+    <script>
+      (() => {
+        const lightbox = document.getElementById("lightbox");
+        const image = document.getElementById("lightboxImage");
+        const title = document.getElementById("lightboxTitle");
+        const openLink = document.getElementById("lightboxOpen");
+        const stage = document.getElementById("lightboxStage");
+        let zoom = 1;
+
+        function applyZoom() {
+          image.style.width = (zoom * 100) + "%";
+        }
+
+        function openPreview(button) {
+          const src = button.dataset.lightboxSrc;
+          const label = button.dataset.lightboxTitle || "Screenshot preview";
+          if (!src) return;
+          zoom = 1;
+          image.src = src;
+          image.alt = label;
+          title.textContent = label;
+          openLink.href = src;
+          applyZoom();
+          lightbox.dataset.open = "true";
+          stage.scrollTo({ top: 0, left: 0 });
+          document.body.style.overflow = "hidden";
+        }
+
+        function closePreview() {
+          lightbox.dataset.open = "false";
+          image.removeAttribute("src");
+          document.body.style.overflow = "";
+        }
+
+        document.addEventListener("click", (event) => {
+          const previewButton = event.target.closest("[data-lightbox-src]");
+          if (previewButton) {
+            event.preventDefault();
+            openPreview(previewButton);
+            return;
+          }
+
+          if (event.target.closest("[data-lightbox-close]")) {
+            closePreview();
+            return;
+          }
+
+          const zoomButton = event.target.closest("[data-zoom]");
+          if (!zoomButton) return;
+          const action = zoomButton.dataset.zoom;
+          if (action === "in") zoom = Math.min(zoom + 0.25, 4);
+          if (action === "out") zoom = Math.max(zoom - 0.25, 0.5);
+          if (action === "reset") zoom = 1;
+          applyZoom();
+        });
+
+        lightbox.addEventListener("click", (event) => {
+          if (event.target === lightbox) closePreview();
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && lightbox.dataset.open === "true") {
+            closePreview();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
 `;
@@ -324,9 +488,12 @@ function resultRow(runDir: string, result: ComparisonResult): string {
 
 function figure(label: string, runDir: string, filePath: string): string {
   const relativePath = path.relative(runDir, filePath).split(path.sep).join("/");
+  const title = `${label}: ${relativePath}`;
   return `<figure>
   <figcaption>${escapeHtml(label)}</figcaption>
-  <a href="${escapeAttr(relativePath)}"><img src="${escapeAttr(relativePath)}" alt="${escapeAttr(label)} screenshot"></a>
+  <button class="shot-button" type="button" data-lightbox-src="${escapeAttr(relativePath)}" data-lightbox-title="${escapeAttr(title)}">
+    <img src="${escapeAttr(relativePath)}" alt="${escapeAttr(label)} screenshot">
+  </button>
 </figure>`;
 }
 
