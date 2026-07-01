@@ -7,6 +7,7 @@ Configurable Playwright visual comparison for checking the same pages across two
 ```sh
 npm install
 npx playwright install chromium
+PORT=4317 npm run visual:ui
 BASELINE_URL=https://satishkchoudhary.com TARGET_URL=http://localhost:3000 npm run visual:all
 ```
 
@@ -15,6 +16,7 @@ The full workflow discovers pages, captures baseline and target screenshots, wri
 ## Commands
 
 ```sh
+npm run visual:ui
 npm run visual:urls
 npm run visual:crawl
 npm run visual:test

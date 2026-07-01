@@ -45,12 +45,29 @@ Reports are still generated when visual differences fail.
 ## Commands
 
 ```sh
+npm run visual:ui
 npm run visual:urls
 npm run visual:crawl
 npm run visual:test
 npm run visual:report
 npm run visual:all
 ```
+
+## Local GUI
+
+Start the local dashboard:
+
+```sh
+npm run visual:ui
+```
+
+Open:
+
+```text
+http://127.0.0.1:4317/
+```
+
+The dashboard supports URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
 
 Use a dry run to verify configuration without launching the browser:
 
