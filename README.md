@@ -4,7 +4,7 @@ Configurable Playwright visual comparison for checking the same pages across two
 
 ## Quick Start
 
-Use Node.js 18 or newer. The project is tested against Node 18, 20, and 22.
+Use Node.js 18 or newer. The project is tested against Node 18, 20, and 22 on Linux, Windows, and macOS.
 
 ```sh
 npm install
@@ -75,7 +75,7 @@ The supported runtime target is Node.js `>=18`.
 Compatibility choices:
 
 - npm scripts call `tsx` directly instead of `node --import tsx`, which keeps the commands working across Node 18, 20, and 22.
-- GitHub Actions runs `npm test` on Node 18, 20, and 22.
+- GitHub Actions runs `npm test` on Node 18, 20, and 22 across Linux, Windows, and macOS.
 - Project code should avoid Node-20-only APIs unless the `engines.node` range is intentionally raised.
 
 ## Commands

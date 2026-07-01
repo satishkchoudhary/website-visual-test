@@ -8,11 +8,15 @@ on:
 
 jobs:
   typecheck:
-    name: Typecheck on Node ${{ matrix.node-version }}
-    runs-on: ubuntu-latest
+    name: Typecheck on ${{ matrix.os }} / Node ${{ matrix.node-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         node-version:
           - 18
           - 20

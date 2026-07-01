@@ -4,7 +4,7 @@ This project compares two configurable website URLs page by page across desktop,
 
 ## Setup
 
-Use Node.js 18 or newer. The repository is checked against Node 18, 20, and 22 in CI.
+Use Node.js 18 or newer. The repository is checked against Node 18, 20, and 22 on Linux, Windows, and macOS in CI.
 
 ```sh
 npm install
