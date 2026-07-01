@@ -124,6 +124,8 @@ Saved presets are written to `visual/presets.json`, which is ignored by git beca
 
 See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking, thresholds, and review guidance.
 
+Release notes are available in [docs/releases](docs/releases).
+
 ## URL Extraction
 
 Run this before comparing when you want a clean URL inventory:
