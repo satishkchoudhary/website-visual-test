@@ -127,7 +127,7 @@ Saved presets are written to `visual/presets.json`, which is ignored by git beca
 
 See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking, thresholds, and review guidance.
 
-Release notes are available in [docs/releases](docs/releases).
+Release notes are available in [docs/releases](docs/releases), including the current [v1.0.0 release note](docs/releases/v1.0.0.md).
 
 ## URL Extraction
 
