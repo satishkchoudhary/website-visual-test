@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Generated visual test artifacts
+visual/pages.json
+visual/pages.md
+visual-test-results/
+
+# Local configuration
+.env
+
+# OS/editor noise
+.DS_Store
+*.log
