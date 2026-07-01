@@ -7,10 +7,10 @@ This project compares two configurable website URLs page by page across desktop,
 Use Node.js 18 or newer. The repository is checked against Node 18, 20, and 22 on Linux, Windows, and macOS in CI.
 
 ```sh
-npm install
-npx playwright install chromium
-npm run preflight
+npm run setup
 ```
+
+The setup helper runs `npm install`, installs Playwright Chromium, then runs preflight. For manual setup, run `npm install`, `npx playwright install chromium`, and `npm run preflight`.
 
 Create a local `.env` file if you do not want to pass URLs every time:
 
