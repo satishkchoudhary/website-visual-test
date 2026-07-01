@@ -45,6 +45,8 @@ npm run visual:all -- --baseline=https://satishkchoudhary.com --target=http://lo
 
 Reports are still generated when visual differences fail.
 
+The local dashboard can export any generated run as a ZIP bundle. ZIP bundles include the HTML report, Markdown summary, screenshots, diffs, and metadata.
+
 ## Commands
 
 ```sh
@@ -70,7 +72,7 @@ Open:
 http://127.0.0.1:4317/
 ```
 
-The dashboard supports system preflight checks, saved local presets, URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
+The dashboard supports system preflight checks, saved local presets, URL extraction, comparison from the current checklist, report ZIP downloads, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
 
 Presets are saved to `visual/presets.json`. That file is ignored by git because presets may contain client URLs.
 

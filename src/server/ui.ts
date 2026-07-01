@@ -477,6 +477,7 @@ export function renderUi(): string {
                 <a class="link-button" href="/visual/urls.md" target="_blank" rel="noreferrer">URL Inventory</a>
                 <a class="link-button" href="/visual/pages.md" target="_blank" rel="noreferrer">Checklist</a>
                 <a class="link-button" href="/reports/latest/index.html" target="_blank" rel="noreferrer">Latest Report</a>
+                <a class="link-button" href="/exports/latest.zip">Latest ZIP</a>
               </div>
             </div>
           </section>
@@ -689,7 +690,7 @@ export function renderUi(): string {
           '<td>' + run.passed + '</td>' +
           '<td>' + run.failed + '</td>' +
           '<td>' + run.errors + '</td>' +
-          '<td><a href="' + escapeAttr(run.reportPath) + '" target="_blank" rel="noreferrer">Report</a><br><a href="' + escapeAttr(run.summaryPath) + '" target="_blank" rel="noreferrer">Summary</a></td>' +
+          '<td><a href="' + escapeAttr(run.reportPath) + '" target="_blank" rel="noreferrer">Report</a><br><a href="' + escapeAttr(run.summaryPath) + '" target="_blank" rel="noreferrer">Summary</a><br><a href="' + escapeAttr(run.zipPath) + '">ZIP</a></td>' +
           '</tr>'
         )).join("");
       }

@@ -57,7 +57,7 @@ The dashboard lets users:
 - Watch a live progress bar, current step, and timestamped job log.
 - Run a system preflight check from the UI.
 - Review URL inventory and past test runs.
-- Open the latest report, historical reports, and Markdown summaries.
+- Open the latest report, historical reports, Markdown summaries, and downloadable ZIP bundles.
 
 ## Preflight
 
@@ -138,3 +138,5 @@ visual/pages.md
 ## Report Review
 
 HTML reports include screenshot previews for baseline, target, and diff images. Click a preview to open it in a lightbox, then zoom in, zoom out, reset zoom, or open the PNG directly.
+
+Use **Latest ZIP** or the ZIP links in **Past Results** to download a portable report bundle containing the HTML report, Markdown summary, screenshots, diffs, and metadata for a run.

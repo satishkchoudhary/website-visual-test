@@ -10,6 +10,7 @@ import { generateReports } from "../report.js";
 import { runVisualTest } from "../visualTest.js";
 import { runPreflight } from "../preflight.js";
 import { deletePreset, listPresets, savePreset } from "../presets.js";
+import { exportLatestReport, exportRunReport } from "../exportBundle.js";
 import { renderUi } from "./ui.js";
 
 type JobAction = "extract" | "compare" | "full";
@@ -51,6 +52,7 @@ interface RunHistoryItem {
   runDir: string;
   reportPath: string;
   summaryPath: string;
+  zipPath: string;
   startedAt: string;
   completedAt: string;
   baselineUrl: string;
@@ -176,6 +178,20 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
     const id = decodeURIComponent(url.pathname.replace("/api/presets/", ""));
     const deleted = await deletePreset(id);
     sendJson(response, deleted ? 200 : 404, deleted ? { deleted: true } : { error: "Preset not found." });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/exports/latest.zip") {
+    const bundle = await exportLatestReport(path.join(root, "visual-test-results"));
+    sendZip(response, bundle.fileName, bundle.buffer);
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname.startsWith("/exports/")) {
+    const runId = decodeURIComponent(url.pathname.replace("/exports/", "").replace(/\.zip$/, ""));
+    const runDir = path.resolve(root, "visual-test-results", runId);
+    const bundle = await exportRunReport(runDir, path.join(root, "visual-test-results"));
+    sendZip(response, bundle.fileName, bundle.buffer);
     return;
   }
 
@@ -359,6 +375,7 @@ async function readRunHistory(): Promise<RunHistoryItem[]> {
           runDir: run.runDir,
           reportPath: `/reports/${relativeRunDir}/index.html`,
           summaryPath: `/reports/${relativeRunDir}/summary.md`,
+          zipPath: `/exports/${relativeRunDir}.zip`,
           startedAt: run.startedAt,
           completedAt: run.completedAt,
           baselineUrl: run.baselineUrl,
@@ -414,6 +431,15 @@ async function readBody<T>(request: IncomingMessage): Promise<T> {
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
   send(response, status, JSON.stringify(value, null, 2), "application/json; charset=utf-8");
+}
+
+function sendZip(response: ServerResponse, fileName: string, buffer: Buffer): void {
+  response.writeHead(200, {
+    "content-disposition": `attachment; filename="${fileName}"`,
+    "content-length": buffer.length,
+    "content-type": "application/zip",
+  });
+  response.end(buffer);
 }
 
 function send(response: ServerResponse, status: number, body: string, contentType: string): void {
