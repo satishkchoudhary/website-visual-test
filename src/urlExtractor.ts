@@ -13,6 +13,12 @@ export async function extractUrls(config: VisualConfig): Promise<UrlInventory> {
   const records = new Map<string, UrlRecord>();
   const notes: string[] = [];
 
+  if (config.urlSource === "manual") {
+    const manualResult = extractFromManualPaths(config);
+    mergeRecords(records, manualResult.records);
+    notes.push(...manualResult.notes);
+  }
+
   if (config.urlSource === "sitemap" || config.urlSource === "both") {
     const sitemapResult = await extractFromSitemaps(config);
     mergeRecords(records, sitemapResult.records);
@@ -121,6 +127,42 @@ async function extractFromSitemaps(config: VisualConfig): Promise<{ records: Map
 
   if (seenSitemaps.size >= maxSitemaps) notes.push(`Stopped after reading ${maxSitemaps} sitemap files.`);
   return { records, notes };
+}
+
+function extractFromManualPaths(config: VisualConfig): { records: Map<string, UrlRecord>; notes: string[] } {
+  const records = new Map<string, UrlRecord>();
+  const notes: string[] = [];
+
+  config.manualPaths.forEach((entry, index) => {
+    const raw = entry.trim();
+    if (!raw || raw.startsWith("#")) return;
+
+    const pathname = normalizeManualPath(raw, config);
+    if (!pathname) {
+      notes.push(`Manual URL line ${index + 1} skipped: ${raw}`);
+      return;
+    }
+
+    addRecord(records, pathname, "manual", `manual line ${index + 1}`);
+  });
+
+  if (records.size === 0) {
+    notes.push("Manual URL list did not contain any usable paths.");
+  }
+
+  return { records, notes };
+}
+
+function normalizeManualPath(value: string, config: VisualConfig): string | null {
+  let url: URL;
+
+  try {
+    url = new URL(value, config.baselineUrl);
+  } catch {
+    return null;
+  }
+
+  return normalizeDiscoveredPath(url.toString(), url.origin, config);
 }
 
 function addRecord(records: Map<string, UrlRecord>, pagePath: string, source: string, note = ""): void {

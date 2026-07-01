@@ -10,6 +10,7 @@ const config: VisualConfigInput = {
   pagesMarkdownFile: "visual/pages.md",
   urlSource: "crawl",
   sitemapPaths: ["/sitemap.xml", "/sitemap_index.xml"],
+  manualPaths: [],
   maxPages: 100,
   threshold: 0.01,
   pixelThreshold: 16,

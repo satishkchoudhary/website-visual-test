@@ -9,6 +9,7 @@ export interface PresetOptions {
   threshold: number;
   waitUntil: string;
   sitemaps: string;
+  manualUrls: string;
   viewports: string;
 }
 
@@ -89,6 +90,7 @@ function normalizeOptions(options: Partial<PresetOptions>): PresetOptions {
     threshold: numberOrDefault(options.threshold, 0.01),
     waitUntil: String(options.waitUntil || "domcontentloaded"),
     sitemaps: String(options.sitemaps || "/sitemap.xml,/sitemap_index.xml"),
+    manualUrls: String(options.manualUrls || ""),
     viewports: String(options.viewports || "desktop:1440x900,tablet:768x1024,mobile:390x844"),
   };
 }

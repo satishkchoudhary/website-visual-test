@@ -57,6 +57,7 @@ export async function loadVisualConfig({
     maxPages: numberValue(first(cli.maxPages, env.VISUAL_MAX_PAGES, userConfig.maxPages), 100),
     urlSource: parseUrlSource(stringFirst(cli.urlSource, env.VISUAL_URL_SOURCE, userConfig.urlSource, "crawl")),
     sitemapPaths: listValue(cli.sitemaps, env.VISUAL_SITEMAPS, userConfig.sitemapPaths, ["/sitemap.xml", "/sitemap_index.xml"]),
+    manualPaths: pathListValue(cli.manualUrls, env.VISUAL_MANUAL_URLS, userConfig.manualPaths, []),
     threshold: numberValue(first(cli.threshold, env.VISUAL_THRESHOLD, userConfig.threshold), 0.01),
     pixelThreshold: numberValue(first(cli.pixelThreshold, env.VISUAL_PIXEL_THRESHOLD, userConfig.pixelThreshold), 16),
     retryCount: numberValue(first(cli.retryCount, env.VISUAL_RETRY_COUNT, userConfig.retryCount), 1),
@@ -103,6 +104,7 @@ export function summarizeConfig(config: VisualConfig): object {
     pagesFile: config.pagesFile,
     urlSource: config.urlSource,
     sitemapPaths: config.sitemapPaths,
+    manualPaths: config.manualPaths,
     viewports: config.viewports,
     includePathPatterns: config.includePathPatterns,
     excludePathPatterns: config.excludePathPatterns,
@@ -110,8 +112,8 @@ export function summarizeConfig(config: VisualConfig): object {
 }
 
 function parseUrlSource(value: string): VisualConfig["urlSource"] {
-  if (value === "crawl" || value === "sitemap" || value === "both") return value;
-  throw new Error(`Invalid URL source: ${value}. Use crawl, sitemap, or both.`);
+  if (value === "crawl" || value === "sitemap" || value === "both" || value === "manual") return value;
+  throw new Error(`Invalid URL source: ${value}. Use crawl, sitemap, both, or manual.`);
 }
 
 async function loadUserConfig(): Promise<VisualConfigInput> {
@@ -145,6 +147,23 @@ function listValue(cliValue: unknown, envValue: unknown, configValue: unknown, f
   if (envValue !== undefined) return splitList(envValue);
   if (Array.isArray(configValue)) return configValue.map(String);
   return fallback;
+}
+
+function pathListValue(cliValue: unknown, envValue: unknown, configValue: unknown, fallback: string[]): string[] {
+  if (cliValue !== undefined) return splitPathList(cliValue);
+  if (envValue !== undefined) return splitPathList(envValue);
+  if (Array.isArray(configValue)) return configValue.map(String);
+  if (configValue !== undefined) return splitPathList(configValue);
+  return fallback;
+}
+
+function splitPathList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (value === undefined || value === null || value === "") return [];
+  return String(value)
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function parseViewports(value: unknown): VisualViewport[] {

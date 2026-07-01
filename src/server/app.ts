@@ -44,6 +44,7 @@ interface JobOptions {
   threshold?: number;
   waitUntil?: string;
   sitemaps?: string;
+  manualUrls?: string;
   viewports?: string;
 }
 
@@ -243,7 +244,11 @@ async function runJob(job: JobRecord, options: JobOptions): Promise<void> {
 }
 
 async function extractForJob(job: JobRecord, config: VisualConfig, startPercent: number, endPercent: number): Promise<UrlInventory> {
-  const sourceLabel = config.urlSource === "both" ? "sitemaps and crawl" : config.urlSource;
+  const sourceLabel = config.urlSource === "both"
+    ? "sitemaps and crawl"
+    : config.urlSource === "manual"
+      ? "manual URL list"
+      : config.urlSource;
   setProgress(job, startPercent, "Discovering URLs", `Reading ${sourceLabel} sources.`, { log: true });
   const inventory = await extractUrls(config);
   setProgress(job, endPercent, "URLs ready", `Found ${inventory.urls.length} URL(s).`, {
@@ -293,6 +298,7 @@ async function configFromOptions(options: JobOptions): Promise<VisualConfig> {
   ];
 
   if (options.sitemaps) argv.push(`--sitemaps=${options.sitemaps}`);
+  if (options.manualUrls) argv.push(`--manual-urls=${options.manualUrls}`);
   if (options.viewports) argv.push(`--viewports=${options.viewports}`);
 
   return loadVisualConfig({ argv, failOnDifference: false });

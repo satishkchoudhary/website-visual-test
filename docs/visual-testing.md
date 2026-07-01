@@ -128,6 +128,7 @@ Available URL sources:
 | `crawl` | Launches Playwright and follows same-origin links from the baseline URL. |
 | `sitemap` | Fetches configured sitemap XML files and extracts matching paths without launching a browser. |
 | `both` | Reads sitemap URLs and merges them with browser crawl discovery. |
+| `manual` | Uses the relative URL list supplied by the dashboard, `--manual-urls`, `VISUAL_MANUAL_URLS`, or `manualPaths` in config. |
 
 Configure sitemap files:
 
@@ -136,6 +137,14 @@ npm run visual:urls -- --baseline=https://example.com --target=https://preview.e
 ```
 
 Some sitemap indexes reference the target/public host even when the baseline is a redesign or preview host. The extractor accepts paths from either the baseline or target origin, then rebuilds both comparison URLs from the same path.
+
+Use manual URL lists when discovery is noisy or when stakeholders provide an exact validation checklist:
+
+```sh
+npm run visual:urls -- --baseline=https://example.com --target=https://preview.example.com --url-source=manual --manual-urls=/,/about,/contact
+```
+
+Manual entries can be relative paths such as `/about`, paths without a leading slash such as `about`, or full URLs copied from another domain. The extractor keeps the path and builds matching baseline and target URLs from the domains supplied for the run.
 
 ## One Page Or One Viewport
 

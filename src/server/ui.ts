@@ -66,7 +66,8 @@ export function renderUi(): string {
         font-weight: 700;
       }
       input,
-      select {
+      select,
+      textarea {
         width: 100%;
         min-height: 38px;
         border: 1px solid #cbd5e1;
@@ -77,10 +78,15 @@ export function renderUi(): string {
       }
       input:focus,
       select:focus,
+      textarea:focus,
       button:focus-visible,
       a:focus-visible {
         outline: 3px solid #1b75bb;
         outline-offset: 2px;
+      }
+      textarea {
+        min-height: 112px;
+        resize: vertical;
       }
       .full {
         grid-column: 1 / -1;
@@ -413,6 +419,7 @@ export function renderUi(): string {
                   <option value="sitemap">Sitemap</option>
                   <option value="crawl">Crawl</option>
                   <option value="both">Both</option>
+                  <option value="manual">Manual List</option>
                 </select>
               </label>
               <label>Max Pages
@@ -430,6 +437,9 @@ export function renderUi(): string {
               </label>
               <label class="full">Sitemaps
                 <input id="sitemaps" value="/sitemap.xml,/sitemap_index.xml">
+              </label>
+              <label class="full">Relative URLs
+                <textarea id="manualUrls" placeholder="/&#10;/about&#10;/contact"></textarea>
               </label>
               <div class="full">
                 <label>Viewports</label>
@@ -567,6 +577,7 @@ export function renderUi(): string {
           threshold: Number(document.getElementById("threshold").value || 0.01),
           waitUntil: document.getElementById("waitUntil").value,
           sitemaps: document.getElementById("sitemaps").value.trim(),
+          manualUrls: document.getElementById("manualUrls").value.trim(),
           viewports: selectedViewports.join(","),
         };
       }
@@ -579,6 +590,7 @@ export function renderUi(): string {
         document.getElementById("threshold").value = options.threshold ?? 0.01;
         document.getElementById("waitUntil").value = options.waitUntil || "domcontentloaded";
         document.getElementById("sitemaps").value = options.sitemaps || "/sitemap.xml,/sitemap_index.xml";
+        document.getElementById("manualUrls").value = options.manualUrls || "";
 
         const selectedViewports = new Set(String(options.viewports || "").split(",").map((item) => item.trim()).filter(Boolean));
         document.querySelectorAll("input[name='viewport']").forEach((input) => {

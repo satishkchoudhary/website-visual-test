@@ -49,7 +49,7 @@ The dashboard lets users:
 
 - Enter baseline and target website URLs.
 - Save and reload local project presets for repeat comparisons.
-- Extract URLs from sitemap, crawl, or both.
+- Extract URLs from sitemap, crawl, both, or a pasted manual list.
 - Run comparison from the current URL checklist.
 - Run the full Extract + Compare workflow.
 - Watch a live progress bar, current step, and timestamped job log.
@@ -130,6 +130,14 @@ Run this before comparing when you want a clean URL inventory:
 ```sh
 npm run visual:urls -- --baseline=https://example.com --target=https://www.example.com --url-source=sitemap --max-pages=100
 ```
+
+Use a manual relative URL list when you already know the exact paths to validate across both domains:
+
+```sh
+npm run visual:urls -- --baseline=https://example.com --target=https://www.example.com --url-source=manual --manual-urls=/,/about,/contact
+```
+
+The dashboard supports the same flow with **URL Source** set to **Manual List** and one relative URL per line in **Relative URLs**.
 
 Outputs:
 
