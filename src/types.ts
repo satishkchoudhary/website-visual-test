@@ -2,6 +2,7 @@ import type { PageScreenshotOptions } from "playwright";
 
 export type ViewportName = string;
 export type PageWaitUntil = "commit" | "domcontentloaded" | "load" | "networkidle";
+export type UrlExtractionSource = "crawl" | "sitemap" | "both";
 
 export interface VisualViewport {
   name: ViewportName;
@@ -20,6 +21,10 @@ export interface VisualConfigInput {
   outputDir?: string;
   pagesFile?: string;
   pagesMarkdownFile?: string;
+  urlsFile?: string;
+  urlsMarkdownFile?: string;
+  urlSource?: UrlExtractionSource;
+  sitemapPaths?: string[];
   maxPages?: number;
   threshold?: number;
   pixelThreshold?: number;
@@ -63,6 +68,17 @@ export interface PageManifest {
   targetUrl: string;
   maxPages: number;
   pages: PageEntry[];
+}
+
+export interface UrlInventory {
+  generatedAt: string;
+  baselineUrl: string;
+  targetUrl: string;
+  maxPages: number;
+  urlSource: UrlExtractionSource;
+  sitemapPaths: string[];
+  urls: PageEntry[];
+  notes: string[];
 }
 
 export interface ScreenshotPaths {

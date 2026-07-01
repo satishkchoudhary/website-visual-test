@@ -45,6 +45,7 @@ Reports are still generated when visual differences fail.
 ## Commands
 
 ```sh
+npm run visual:urls
 npm run visual:crawl
 npm run visual:test
 npm run visual:report
@@ -56,6 +57,47 @@ Use a dry run to verify configuration without launching the browser:
 ```sh
 npm run visual:crawl -- --baseline=https://example.com --target=https://preview.example.com --dry-run --json
 ```
+
+## URL Extraction Step
+
+Use `visual:urls` when you want a visible URL inventory before screenshots are taken.
+
+```sh
+npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
+```
+
+The extractor writes:
+
+```text
+visual/urls.json
+visual/urls.md
+visual/pages.json
+visual/pages.md
+```
+
+`visual/pages.json` is the checklist consumed by `visual:test`, so this is the recommended reviewable sequence:
+
+```sh
+npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
+npm run visual:test -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com
+npm run visual:report
+```
+
+Available URL sources:
+
+| Source | Behavior |
+| --- | --- |
+| `crawl` | Launches Playwright and follows same-origin links from the baseline URL. |
+| `sitemap` | Fetches configured sitemap XML files and extracts matching paths without launching a browser. |
+| `both` | Reads sitemap URLs and merges them with browser crawl discovery. |
+
+Configure sitemap files:
+
+```sh
+npm run visual:urls -- --baseline=https://example.com --target=https://preview.example.com --url-source=sitemap --sitemaps=/sitemap.xml,/custom-sitemap.xml
+```
+
+Some sitemap indexes reference the target/public host even when the baseline is a redesign or preview host. The extractor accepts paths from either the baseline or target origin, then rebuilds both comparison URLs from the same path.
 
 ## One Page Or One Viewport
 

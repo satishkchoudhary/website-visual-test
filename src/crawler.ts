@@ -10,7 +10,12 @@ interface QueueItem {
   source: string;
 }
 
-export async function crawlPages(config: VisualConfig): Promise<PageManifest> {
+interface CrawlOptions {
+  writeFiles?: boolean;
+}
+
+export async function crawlPages(config: VisualConfig, options: CrawlOptions = {}): Promise<PageManifest> {
+  const writeFiles = options.writeFiles ?? true;
   const startPath = normalizePathname(config.page || config.startPath);
   const maxPages = config.page ? 1 : config.maxPages;
   const baselineOrigin = new URL(config.baselineUrl).origin;
@@ -77,9 +82,13 @@ export async function crawlPages(config: VisualConfig): Promise<PageManifest> {
     pages,
   };
 
+  if (writeFiles) await writePageManifest(config, manifest);
+  return manifest;
+}
+
+export async function writePageManifest(config: VisualConfig, manifest: PageManifest): Promise<void> {
   await writeJson(config.pagesFile, manifest);
   await writeText(config.pagesMarkdownFile, renderPagesMarkdown(manifest));
-  return manifest;
 }
 
 async function discoverLinks(page: Page, origin: string, config: VisualConfig): Promise<string[]> {

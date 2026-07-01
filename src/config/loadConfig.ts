@@ -40,6 +40,13 @@ export async function loadVisualConfig({
     baselineUrl,
     targetUrl,
     outputDir: stringFirst(cli.output, env.VISUAL_OUTPUT_DIR, userConfig.outputDir, "visual-test-results"),
+    urlsFile: stringFirst(cli.urlsFile, env.VISUAL_URLS_FILE, userConfig.urlsFile, "visual/urls.json"),
+    urlsMarkdownFile: stringFirst(
+      cli.urlsMarkdownFile,
+      env.VISUAL_URLS_MARKDOWN_FILE,
+      userConfig.urlsMarkdownFile,
+      "visual/urls.md",
+    ),
     pagesFile: stringFirst(cli.pagesFile, env.VISUAL_PAGES_FILE, userConfig.pagesFile, "visual/pages.json"),
     pagesMarkdownFile: stringFirst(
       cli.pagesMarkdownFile,
@@ -48,6 +55,8 @@ export async function loadVisualConfig({
       "visual/pages.md",
     ),
     maxPages: numberValue(first(cli.maxPages, env.VISUAL_MAX_PAGES, userConfig.maxPages), 100),
+    urlSource: parseUrlSource(stringFirst(cli.urlSource, env.VISUAL_URL_SOURCE, userConfig.urlSource, "crawl")),
+    sitemapPaths: listValue(cli.sitemaps, env.VISUAL_SITEMAPS, userConfig.sitemapPaths, ["/sitemap.xml", "/sitemap_index.xml"]),
     threshold: numberValue(first(cli.threshold, env.VISUAL_THRESHOLD, userConfig.threshold), 0.01),
     pixelThreshold: numberValue(first(cli.pixelThreshold, env.VISUAL_PIXEL_THRESHOLD, userConfig.pixelThreshold), 16),
     retryCount: numberValue(first(cli.retryCount, env.VISUAL_RETRY_COUNT, userConfig.retryCount), 1),
@@ -90,11 +99,19 @@ export function summarizeConfig(config: VisualConfig): object {
     waitUntil: config.waitUntil,
     fullPage: config.fullPage,
     outputDir: config.outputDir,
+    urlsFile: config.urlsFile,
     pagesFile: config.pagesFile,
+    urlSource: config.urlSource,
+    sitemapPaths: config.sitemapPaths,
     viewports: config.viewports,
     includePathPatterns: config.includePathPatterns,
     excludePathPatterns: config.excludePathPatterns,
   };
+}
+
+function parseUrlSource(value: string): VisualConfig["urlSource"] {
+  if (value === "crawl" || value === "sitemap" || value === "both") return value;
+  throw new Error(`Invalid URL source: ${value}. Use crawl, sitemap, or both.`);
 }
 
 async function loadUserConfig(): Promise<VisualConfigInput> {

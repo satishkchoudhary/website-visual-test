@@ -15,6 +15,7 @@ The full workflow discovers pages, captures baseline and target screenshots, wri
 ## Commands
 
 ```sh
+npm run visual:urls
 npm run visual:crawl
 npm run visual:test
 npm run visual:report
@@ -41,3 +42,22 @@ visual-test-results/latest/
 ```
 
 See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking, thresholds, and review guidance.
+
+## URL Extraction
+
+Run this before comparing when you want a clean URL inventory:
+
+```sh
+npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
+```
+
+Outputs:
+
+```text
+visual/urls.json
+visual/urls.md
+visual/pages.json
+visual/pages.md
+```
+
+`visual:test` uses `visual/pages.json`, so the extracted URL set becomes the comparison checklist.
