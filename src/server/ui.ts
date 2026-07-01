@@ -357,6 +357,31 @@ export function renderUi(): string {
               </table>
             </div>
           </section>
+
+          <section class="panel" style="margin-top: 18px;">
+            <div class="job-head">
+              <h2>Past Results</h2>
+              <button type="button" id="refreshRuns">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Run</th>
+                    <th>Completed</th>
+                    <th>Pages</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Errors</th>
+                    <th>Links</th>
+                  </tr>
+                </thead>
+                <tbody id="historyRows">
+                  <tr><td class="empty" colspan="7">No past results loaded.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </div>
     </main>
@@ -422,6 +447,7 @@ export function renderUi(): string {
         } else {
           setBusy(false);
           await loadInventory();
+          await loadHistory();
         }
       }
 
@@ -461,6 +487,30 @@ export function renderUi(): string {
         )).join("");
       }
 
+      async function loadHistory() {
+        const response = await fetch("/api/runs");
+        if (!response.ok) return;
+        const runs = await response.json();
+        const rows = document.getElementById("historyRows");
+
+        if (!runs.length) {
+          rows.innerHTML = '<tr><td class="empty" colspan="7">No past results yet.</td></tr>';
+          return;
+        }
+
+        rows.innerHTML = runs.map((run) => (
+          '<tr>' +
+          '<td><code>' + escapeHtml(run.id) + '</code><br><small>' + escapeHtml(shortUrl(run.baselineUrl)) + ' vs ' + escapeHtml(shortUrl(run.targetUrl)) + '</small></td>' +
+          '<td>' + escapeHtml(formatDate(run.completedAt)) + '</td>' +
+          '<td>' + run.pages + '<br><small>' + run.comparisons + ' checks</small></td>' +
+          '<td>' + run.passed + '</td>' +
+          '<td>' + run.failed + '</td>' +
+          '<td>' + run.errors + '</td>' +
+          '<td><a href="' + escapeAttr(run.reportPath) + '" target="_blank" rel="noreferrer">Report</a><br><a href="' + escapeAttr(run.summaryPath) + '" target="_blank" rel="noreferrer">Summary</a></td>' +
+          '</tr>'
+        )).join("");
+      }
+
       function setBusy(isBusy) {
         document.querySelectorAll("button[data-action]").forEach((button) => {
           button.disabled = isBusy;
@@ -494,11 +544,32 @@ export function renderUi(): string {
           .replace(/'/g, "&#39;");
       }
 
+      function escapeAttr(value) {
+        return escapeHtml(value);
+      }
+
+      function formatDate(value) {
+        if (!value) return "-";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString();
+      }
+
+      function shortUrl(value) {
+        try {
+          return new URL(value).host;
+        } catch {
+          return value || "";
+        }
+      }
+
       document.querySelectorAll("button[data-action]").forEach((button) => {
         button.addEventListener("click", () => startJob(button.dataset.action));
       });
       document.getElementById("refreshInventory").addEventListener("click", loadInventory);
+      document.getElementById("refreshRuns").addEventListener("click", loadHistory);
       loadInventory();
+      loadHistory();
     </script>
   </body>
 </html>`;

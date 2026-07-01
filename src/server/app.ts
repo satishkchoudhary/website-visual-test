@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { readFile, realpath, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
 import { loadVisualConfig } from "../config/loadConfig.js";
@@ -34,6 +34,23 @@ interface JobOptions {
   waitUntil?: string;
   sitemaps?: string;
   viewports?: string;
+}
+
+interface RunHistoryItem {
+  id: string;
+  runDir: string;
+  reportPath: string;
+  summaryPath: string;
+  startedAt: string;
+  completedAt: string;
+  baselineUrl: string;
+  targetUrl: string;
+  pages: number;
+  comparisons: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  errors: number;
 }
 
 const port = Number(process.env.PORT || 4317);
@@ -121,6 +138,11 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
   if (request.method === "GET" && url.pathname === "/api/latest-run") {
     const latestRun = await readLatestRun().catch(() => null);
     sendJson(response, 200, latestRun || {});
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/runs") {
+    sendJson(response, 200, await readRunHistory());
     return;
   }
 
@@ -216,6 +238,49 @@ function failJob(job: JobRecord, message: string): void {
 async function readLatestRun(): Promise<VisualRunResult> {
   const latest = await realpath(path.join(root, "visual-test-results/latest"));
   return readJson<VisualRunResult>(path.join(latest, "run.json"));
+}
+
+async function readRunHistory(): Promise<RunHistoryItem[]> {
+  const resultsRoot = path.join(root, "visual-test-results");
+  const dateDirs = await readdir(resultsRoot, { withFileTypes: true }).catch(() => []);
+  const runs: RunHistoryItem[] = [];
+
+  for (const dateDir of dateDirs) {
+    if (!dateDir.isDirectory() || dateDir.name === "latest") continue;
+    const datePath = path.join(resultsRoot, dateDir.name);
+    const runDirs = await readdir(datePath, { withFileTypes: true }).catch(() => []);
+
+    for (const runDir of runDirs) {
+      if (!runDir.isDirectory()) continue;
+      const fullRunDir = path.join(datePath, runDir.name);
+      const runJsonPath = path.join(fullRunDir, "run.json");
+
+      try {
+        const run = await readJson<VisualRunResult>(runJsonPath);
+        const relativeRunDir = path.relative(resultsRoot, fullRunDir).split(path.sep).join("/");
+        runs.push({
+          id: relativeRunDir,
+          runDir: run.runDir,
+          reportPath: `/reports/${relativeRunDir}/index.html`,
+          summaryPath: `/reports/${relativeRunDir}/summary.md`,
+          startedAt: run.startedAt,
+          completedAt: run.completedAt,
+          baselineUrl: run.baselineUrl,
+          targetUrl: run.targetUrl,
+          pages: run.summary.pages,
+          comparisons: run.summary.comparisons,
+          passed: run.summary.passed,
+          failed: run.summary.failed,
+          skipped: run.summary.skipped,
+          errors: run.summary.errors,
+        });
+      } catch {
+        // Ignore incomplete or manually deleted runs.
+      }
+    }
+  }
+
+  return runs.sort((a, b) => b.completedAt.localeCompare(a.completedAt));
 }
 
 async function serveStatic(response: ServerResponse, relativePath: string, allowedRoot: string): Promise<void> {
