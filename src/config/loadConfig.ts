@@ -11,6 +11,37 @@ interface LoadConfigOptions {
   failOnDifference?: boolean;
 }
 
+const defaultCookieBanner = {
+  acceptSelectors: [
+    "#onetrust-accept-btn-handler",
+    "button#onetrust-accept-btn-handler",
+    "[id='onetrust-accept-btn-handler']",
+    "[data-testid='uc-accept-all-button']",
+    "[data-testid='accept-all-button']",
+    "button:has-text('Accept All Cookies')",
+    "button:has-text('Accept All')",
+    "button:has-text('Accept all')",
+    "button:has-text('Accept Cookies')",
+    "button:has-text('Accept cookies')",
+    "button:has-text('Accept')",
+    "button:has-text('I agree')",
+    "button:has-text('Allow all')",
+    "[aria-label='Accept cookies']",
+  ],
+  dismissSelectors: [
+    "#onetrust-reject-all-handler",
+    "button#onetrust-reject-all-handler",
+    "#onetrust-close-btn-container button",
+    ".onetrust-close-btn-handler",
+    "button:has-text('Reject All')",
+    "button:has-text('Reject all')",
+    "button:has-text('Close')",
+    "button:has-text('Dismiss')",
+    "[aria-label='Close']",
+  ],
+  timeoutMs: 6000,
+};
+
 export async function loadVisualConfig({
   argv = process.argv.slice(2),
   requireUrls = true,
@@ -64,6 +95,8 @@ export async function loadVisualConfig({
     timeoutMs: numberValue(first(cli.timeout, env.VISUAL_TIMEOUT_MS, userConfig.timeoutMs), 30000),
     waitUntil: stringFirst(cli.waitUntil, env.VISUAL_WAIT_UNTIL, userConfig.waitUntil, "networkidle") as VisualConfig["waitUntil"],
     waitForSelector: stringFirst(cli.waitForSelector, env.VISUAL_WAIT_FOR_SELECTOR, userConfig.waitForSelector, ""),
+    waitForImages: booleanValue(first(cli.waitForImages, env.VISUAL_WAIT_FOR_IMAGES, userConfig.waitForImages), true),
+    imageReadyTimeoutMs: numberValue(first(cli.imageReadyTimeout, env.VISUAL_IMAGE_READY_TIMEOUT_MS, userConfig.imageReadyTimeoutMs), 10000),
     fullPage: booleanValue(first(cli.fullPage, env.VISUAL_FULL_PAGE, userConfig.fullPage), true),
     allowQuery: booleanValue(first(cli.allowQuery, env.VISUAL_ALLOW_QUERY, userConfig.allowQuery), false),
     startPath: stringFirst(cli.startPath, env.VISUAL_START_PATH, userConfig.startPath, "/"),
@@ -73,7 +106,7 @@ export async function loadVisualConfig({
     viewports: parseViewports(first(cli.viewports, env.VISUAL_VIEWPORTS, userConfig.viewports, [])),
     maskSelectors: listValue(cli.mask, env.VISUAL_MASK, userConfig.maskSelectors, []),
     hideSelectors: listValue(cli.hide, env.VISUAL_HIDE, userConfig.hideSelectors, []),
-    cookieBanner: userConfig.cookieBanner ?? { acceptSelectors: [], dismissSelectors: [] },
+    cookieBanner: mergeCookieBanner(userConfig.cookieBanner),
     page: stringFirst(cli.page, ""),
     viewport: stringFirst(cli.viewport, ""),
     dryRun: Boolean(cli.dryRun),
@@ -98,6 +131,8 @@ export function summarizeConfig(config: VisualConfig): object {
     threshold: config.threshold,
     retryCount: config.retryCount,
     waitUntil: config.waitUntil,
+    waitForImages: config.waitForImages,
+    imageReadyTimeoutMs: config.imageReadyTimeoutMs,
     fullPage: config.fullPage,
     outputDir: config.outputDir,
     urlsFile: config.urlsFile,
@@ -140,6 +175,24 @@ function booleanValue(value: unknown, fallback: boolean): boolean {
   if (value === undefined || value === null || value === "") return fallback;
   if (typeof value === "boolean") return value;
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
+function mergeCookieBanner(configValue: VisualConfigInput["cookieBanner"]): VisualConfig["cookieBanner"] {
+  return {
+    acceptSelectors: uniqueList([
+      ...defaultCookieBanner.acceptSelectors,
+      ...(configValue?.acceptSelectors ?? []),
+    ]),
+    dismissSelectors: uniqueList([
+      ...defaultCookieBanner.dismissSelectors,
+      ...(configValue?.dismissSelectors ?? []),
+    ]),
+    timeoutMs: numberValue(configValue?.timeoutMs, defaultCookieBanner.timeoutMs),
+  };
+}
+
+function uniqueList(values: string[]): string[] {
+  return [...new Set(values.map(String).map((value) => value.trim()).filter(Boolean))];
 }
 
 function listValue(cliValue: unknown, envValue: unknown, configValue: unknown, fallback: string[]): string[] {

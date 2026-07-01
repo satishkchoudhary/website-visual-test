@@ -227,7 +227,25 @@ maskSelectors: ["[data-visual-mask]", ".ad-slot"],
 hideSelectors: ["[data-visual-hide]", ".live-chat-widget"],
 ```
 
-Cookie banner handling is configured as selector placeholders in `visual.config.ts`. Add site-specific accept or dismiss selectors when needed.
+Cookie banner handling includes common OneTrust accept/reject/close selectors by default. Add site-specific accept or dismiss selectors in `visual.config.ts` when needed.
+
+The screenshot flow also waits for images to settle before capture. For full-page screenshots, it briefly scrolls through the page first to trigger lazy-loaded images, then returns to the original scroll position.
+
+```ts
+waitForImages: true,
+imageReadyTimeoutMs: 10000,
+cookieBanner: {
+  acceptSelectors: ["#onetrust-accept-btn-handler"],
+  dismissSelectors: [".onetrust-close-btn-handler"],
+  timeoutMs: 6000,
+},
+```
+
+Disable image waiting only when a site has intentionally never-ending image activity:
+
+```sh
+npm run visual:all -- --no-wait-for-images
+```
 
 ## Output Structure
 
@@ -255,6 +273,8 @@ Open `index.html` for a reviewer-friendly report. Use `summary.md` for GitHub co
 - Missing browser: run `npx playwright install chromium`.
 - Local target unavailable: start your local server before running `visual:test` or `visual:all`.
 - False positives from animation: add a mask/hide selector or use a more stable wait selector.
+- False positives from cookie banners: add the accept or dismiss selector to `cookieBanner` in `visual.config.ts`.
+- False positives from late images: keep `waitForImages` enabled or increase `VISUAL_IMAGE_READY_TIMEOUT_MS`.
 - Slow pages: increase `VISUAL_TIMEOUT_MS` or pass `--timeout=60000`.
 - Query-heavy pages: keep query crawling disabled by default; pass `--allow-query` only when those URLs are intentional.
 - No pages found: check include/exclude patterns and confirm the baseline page links to crawlable internal URLs.

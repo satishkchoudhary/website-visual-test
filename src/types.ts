@@ -13,6 +13,7 @@ export interface VisualViewport {
 export interface CookieBannerConfig {
   acceptSelectors: string[];
   dismissSelectors: string[];
+  timeoutMs?: number;
 }
 
 export interface VisualConfigInput {
@@ -33,6 +34,8 @@ export interface VisualConfigInput {
   timeoutMs?: number;
   waitUntil?: PageWaitUntil;
   waitForSelector?: string;
+  waitForImages?: boolean;
+  imageReadyTimeoutMs?: number;
   fullPage?: boolean;
   allowQuery?: boolean;
   startPath?: string;

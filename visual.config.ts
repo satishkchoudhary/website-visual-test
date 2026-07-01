@@ -18,6 +18,8 @@ const config: VisualConfigInput = {
   timeoutMs: 30000,
   waitUntil: "networkidle",
   waitForSelector: "",
+  waitForImages: true,
+  imageReadyTimeoutMs: 10000,
   fullPage: true,
   allowQuery: false,
   startPath: "/",
@@ -76,16 +78,25 @@ const config: VisualConfigInput = {
   ],
   cookieBanner: {
     acceptSelectors: [
+      "#onetrust-accept-btn-handler",
+      "button#onetrust-accept-btn-handler",
+      "button:has-text('Accept All Cookies')",
+      "button:has-text('Accept All')",
       "button:has-text('Accept')",
       "button:has-text('I agree')",
       "button:has-text('Allow all')",
       "[aria-label='Accept cookies']",
     ],
     dismissSelectors: [
+      "#onetrust-reject-all-handler",
+      "button#onetrust-reject-all-handler",
+      "#onetrust-close-btn-container button",
+      ".onetrust-close-btn-handler",
       "button:has-text('Close')",
       "button:has-text('Dismiss')",
       "[aria-label='Close']",
     ],
+    timeoutMs: 6000,
   },
 };
 
