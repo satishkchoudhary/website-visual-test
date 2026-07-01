@@ -7,8 +7,8 @@ Configurable Playwright visual comparison for checking the same pages across two
 ```sh
 npm install
 npx playwright install chromium
-PORT=4317 npm run visual:ui
-BASELINE_URL=https://satishkchoudhary.com TARGET_URL=http://localhost:3000 npm run visual:all
+npm run visual:ui
+npm run visual:all -- --baseline=https://satishkchoudhary.com --target=http://localhost:3000
 ```
 
 The full workflow discovers pages, captures baseline and target screenshots, writes diff images, and generates HTML and Markdown reports.
@@ -18,13 +18,30 @@ The full workflow discovers pages, captures baseline and target screenshots, wri
 Start the non-technical dashboard:
 
 ```sh
-PORT=4317 npm run visual:ui
+npm run visual:ui
 ```
 
 Then open:
 
 ```text
 http://127.0.0.1:4317/
+```
+
+The dashboard defaults to port `4317`. To use a different port, set `PORT` for your shell:
+
+```sh
+# macOS/Linux
+PORT=4320 npm run visual:ui
+```
+
+```powershell
+# Windows PowerShell
+$env:PORT=4320; npm run visual:ui
+```
+
+```bat
+:: Windows Command Prompt
+set PORT=4320 && npm run visual:ui
 ```
 
 The dashboard lets users:
