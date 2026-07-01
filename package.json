@@ -5,12 +5,12 @@
   "type": "module",
   "description": "Configurable Playwright visual comparison framework for comparing two website domains page by page.",
   "scripts": {
-    "visual:ui": "node --import tsx src/server/app.ts",
-    "visual:urls": "node --import tsx src/cli/urls.ts",
-    "visual:crawl": "node --import tsx src/cli/crawl.ts",
-    "visual:test": "node --import tsx src/cli/test.ts",
-    "visual:report": "node --import tsx src/cli/report.ts",
-    "visual:all": "node --import tsx src/cli/all.ts",
+    "visual:ui": "tsx src/server/app.ts",
+    "visual:urls": "tsx src/cli/urls.ts",
+    "visual:crawl": "tsx src/cli/crawl.ts",
+    "visual:test": "tsx src/cli/test.ts",
+    "visual:report": "tsx src/cli/report.ts",
+    "visual:all": "tsx src/cli/all.ts",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck"
   },
@@ -23,6 +23,6 @@
     "typescript": "^5.5.4"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   }
 }

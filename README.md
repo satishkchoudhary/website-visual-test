@@ -4,6 +4,8 @@ Configurable Playwright visual comparison for checking the same pages across two
 
 ## Quick Start
 
+Use Node.js 18 or newer. The project is tested against Node 18, 20, and 22.
+
 ```sh
 npm install
 npx playwright install chromium
@@ -53,6 +55,16 @@ The dashboard lets users:
 - Watch a live progress bar, current step, and timestamped job log.
 - Review URL inventory and past test runs.
 - Open the latest report, historical reports, and Markdown summaries.
+
+## Node Compatibility
+
+The supported runtime target is Node.js `>=18`.
+
+Compatibility choices:
+
+- npm scripts call `tsx` directly instead of `node --import tsx`, which keeps the commands working across Node 18, 20, and 22.
+- GitHub Actions runs `npm test` on Node 18, 20, and 22.
+- Project code should avoid Node-20-only APIs unless the `engines.node` range is intentionally raised.
 
 ## Commands
 
