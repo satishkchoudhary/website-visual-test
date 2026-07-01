@@ -13,6 +13,30 @@ BASELINE_URL=https://satishkchoudhary.com TARGET_URL=http://localhost:3000 npm r
 
 The full workflow discovers pages, captures baseline and target screenshots, writes diff images, and generates HTML and Markdown reports.
 
+## Dashboard GUI
+
+Start the non-technical dashboard:
+
+```sh
+PORT=4317 npm run visual:ui
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4317/
+```
+
+The dashboard lets users:
+
+- Enter baseline and target website URLs.
+- Extract URLs from sitemap, crawl, or both.
+- Run comparison from the current URL checklist.
+- Run the full Extract + Compare workflow.
+- Watch a live progress bar, current step, and timestamped job log.
+- Review URL inventory and past test runs.
+- Open the latest report, historical reports, and Markdown summaries.
+
 ## Commands
 
 ```sh
@@ -43,6 +67,8 @@ The latest run is also exposed at:
 visual-test-results/latest/
 ```
 
+The dashboard also shows previous runs in **Past Results**, including page count, comparison count, pass/fail/error totals, and links to each run's HTML report and Markdown summary.
+
 See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking, thresholds, and review guidance.
 
 ## URL Extraction
@@ -63,3 +89,7 @@ visual/pages.md
 ```
 
 `visual:test` uses `visual/pages.json`, so the extracted URL set becomes the comparison checklist.
+
+## Report Review
+
+HTML reports include screenshot previews for baseline, target, and diff images. Click a preview to open it in a lightbox, then zoom in, zoom out, reset zoom, or open the PNG directly.
