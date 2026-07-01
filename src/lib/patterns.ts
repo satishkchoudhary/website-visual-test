@@ -16,9 +16,7 @@ export function matchesPattern(pathname: string, pattern: string): boolean {
   }
 
   const normalizedPattern = pattern.startsWith("/") ? pattern : `/${pattern}`;
-  const source = escapeRegExp(normalizedPattern)
-    .replace(/\\\*\\\*/g, ".*")
-    .replace(/\\\*/g, "[^/]*");
+  const source = globToRegexSource(normalizedPattern);
 
   return new RegExp(`^${source}$`).test(pathname);
 }
@@ -37,4 +35,24 @@ export function slugifyPath(pathname: string): string {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+}
+
+function globToRegexSource(pattern: string): string {
+  let source = "";
+
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    const next = pattern[index + 1];
+
+    if (char === "*" && next === "*") {
+      source += ".*";
+      index += 1;
+    } else if (char === "*") {
+      source += "[^/]*";
+    } else {
+      source += escapeRegExp(char);
+    }
+  }
+
+  return source;
 }
