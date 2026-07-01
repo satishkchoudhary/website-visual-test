@@ -105,7 +105,7 @@ See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking,
 Run this before comparing when you want a clean URL inventory:
 
 ```sh
-npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
+npm run visual:urls -- --baseline=https://example.com --target=https://www.example.com --url-source=sitemap --max-pages=100
 ```
 
 Outputs:

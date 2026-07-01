@@ -82,7 +82,7 @@ npm run visual:crawl -- --baseline=https://example.com --target=https://preview.
 Use `visual:urls` when you want a visible URL inventory before screenshots are taken.
 
 ```sh
-npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
+npm run visual:urls -- --baseline=https://example.com --target=https://www.example.com --url-source=sitemap --max-pages=100
 ```
 
 The extractor writes:
@@ -97,8 +97,8 @@ visual/pages.md
 `visual/pages.json` is the checklist consumed by `visual:test`, so this is the recommended reviewable sequence:
 
 ```sh
-npm run visual:urls -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com --url-source=sitemap --max-pages=100
-npm run visual:test -- --baseline=https://redesign.lordabbett.com --target=https://www.lordabbett.com
+npm run visual:urls -- --baseline=https://example.com --target=https://www.example.com --url-source=sitemap --max-pages=100
+npm run visual:test -- --baseline=https://example.com --target=https://www.example.com
 npm run visual:report
 ```
 

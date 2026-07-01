@@ -323,10 +323,10 @@ export function renderUi(): string {
             <h2>Run Setup</h2>
             <div class="grid">
               <label class="full">Baseline URL
-                <input id="baselineUrl" value="https://redesign.lordabbett.com" autocomplete="url">
+                <input id="baselineUrl" value="https://example.com" autocomplete="url">
               </label>
               <label class="full">Target URL
-                <input id="targetUrl" value="https://www.lordabbett.com" autocomplete="url">
+                <input id="targetUrl" value="https://www.example.com" autocomplete="url">
               </label>
               <label>URL Source
                 <select id="urlSource">
