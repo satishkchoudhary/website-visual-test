@@ -50,6 +50,7 @@ set PORT=4320 && npm run visual:ui
 The dashboard lets users:
 
 - Enter baseline and target website URLs.
+- Save and reload local project presets for repeat comparisons.
 - Extract URLs from sitemap, crawl, or both.
 - Run comparison from the current URL checklist.
 - Run the full Extract + Compare workflow.
@@ -110,6 +111,8 @@ visual-test-results/latest/
 ```
 
 The dashboard also shows previous runs in **Past Results**, including page count, comparison count, pass/fail/error totals, and links to each run's HTML report and Markdown summary.
+
+Saved presets are written to `visual/presets.json`, which is ignored by git because presets may contain client URLs.
 
 See [docs/visual-testing.md](docs/visual-testing.md) for configuration, masking, thresholds, and review guidance.
 

@@ -70,7 +70,9 @@ Open:
 http://127.0.0.1:4317/
 ```
 
-The dashboard supports system preflight checks, URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
+The dashboard supports system preflight checks, saved local presets, URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
+
+Presets are saved to `visual/presets.json`. That file is ignored by git because presets may contain client URLs.
 
 Use a dry run to verify configuration without launching the browser:
 

@@ -9,6 +9,7 @@ import { extractUrls } from "../urlExtractor.js";
 import { generateReports } from "../report.js";
 import { runVisualTest } from "../visualTest.js";
 import { runPreflight } from "../preflight.js";
+import { deletePreset, listPresets, savePreset } from "../presets.js";
 import { renderUi } from "./ui.js";
 
 type JobAction = "extract" | "compare" | "full";
@@ -157,6 +158,24 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 
   if (request.method === "GET" && url.pathname === "/api/preflight") {
     sendJson(response, 200, await runPreflight({ port, serverAlreadyRunning: true }));
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/presets") {
+    sendJson(response, 200, await listPresets());
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/presets") {
+    const body = await readBody<Parameters<typeof savePreset>[0]>(request);
+    sendJson(response, 200, await savePreset(body));
+    return;
+  }
+
+  if (request.method === "DELETE" && url.pathname.startsWith("/api/presets/")) {
+    const id = decodeURIComponent(url.pathname.replace("/api/presets/", ""));
+    const deleted = await deletePreset(id);
+    sendJson(response, deleted ? 200 : 404, deleted ? { deleted: true } : { error: "Preset not found." });
     return;
   }
 

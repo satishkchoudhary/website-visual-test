@@ -110,6 +110,22 @@ export function renderUi(): string {
         gap: 10px;
         margin-top: 14px;
       }
+      .preset-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .preset-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .preset-message {
+        min-height: 18px;
+        color: #475467;
+        font-size: 12px;
+      }
       button,
       .link-button {
         min-height: 40px;
@@ -350,6 +366,7 @@ export function renderUi(): string {
         }
         .grid,
         .actions,
+        .preset-actions,
         .status-strip,
         .viewport-list {
           grid-template-columns: 1fr;
@@ -368,6 +385,22 @@ export function renderUi(): string {
         <section class="panel">
           <div class="panel-body">
             <h2>Run Setup</h2>
+            <div class="preset-grid">
+              <label>Project Preset
+                <select id="presetSelect">
+                  <option value="">No saved presets</option>
+                </select>
+              </label>
+              <label>Preset Name
+                <input id="presetName" placeholder="Production vs Preview" autocomplete="off">
+              </label>
+              <div class="preset-actions">
+                <button type="button" id="loadPreset">Load</button>
+                <button type="button" id="savePreset">Save</button>
+                <button type="button" id="deletePreset">Delete</button>
+              </div>
+              <div id="presetMessage" class="preset-message"></div>
+            </div>
             <div class="grid">
               <label class="full">Baseline URL
                 <input id="baselineUrl" value="https://example.com" autocomplete="url">
@@ -512,6 +545,7 @@ export function renderUi(): string {
       const state = {
         currentJob: null,
         pollTimer: null,
+        presets: [],
       };
 
       const viewportSizes = {
@@ -534,6 +568,21 @@ export function renderUi(): string {
           sitemaps: document.getElementById("sitemaps").value.trim(),
           viewports: selectedViewports.join(","),
         };
+      }
+
+      function applyOptions(options) {
+        document.getElementById("baselineUrl").value = options.baselineUrl || "";
+        document.getElementById("targetUrl").value = options.targetUrl || "";
+        document.getElementById("urlSource").value = options.urlSource || "sitemap";
+        document.getElementById("maxPages").value = options.maxPages || 25;
+        document.getElementById("threshold").value = options.threshold ?? 0.01;
+        document.getElementById("waitUntil").value = options.waitUntil || "domcontentloaded";
+        document.getElementById("sitemaps").value = options.sitemaps || "/sitemap.xml,/sitemap_index.xml";
+
+        const selectedViewports = new Set(String(options.viewports || "").split(",").map((item) => item.trim()).filter(Boolean));
+        document.querySelectorAll("input[name='viewport']").forEach((input) => {
+          input.checked = selectedViewports.size ? selectedViewports.has(viewportSizes[input.value]) : true;
+        });
       }
 
       async function startJob(action) {
@@ -645,6 +694,84 @@ export function renderUi(): string {
         )).join("");
       }
 
+      async function loadPresets() {
+        const response = await fetch("/api/presets");
+        if (!response.ok) return;
+        state.presets = await response.json();
+        renderPresets();
+      }
+
+      function renderPresets(selectedId) {
+        const select = document.getElementById("presetSelect");
+        select.innerHTML = '<option value="">No saved presets</option>' + state.presets.map((preset) => (
+          '<option value="' + escapeAttr(preset.id) + '">' + escapeHtml(preset.name) + '</option>'
+        )).join("");
+
+        if (selectedId) select.value = selectedId;
+        const preset = selectedPreset();
+        document.getElementById("presetName").value = preset ? preset.name : document.getElementById("presetName").value;
+      }
+
+      function selectedPreset() {
+        const id = document.getElementById("presetSelect").value;
+        return state.presets.find((preset) => preset.id === id) || null;
+      }
+
+      function loadSelectedPreset() {
+        const preset = selectedPreset();
+        if (!preset) {
+          setPresetMessage("Choose a preset to load.");
+          return;
+        }
+
+        document.getElementById("presetName").value = preset.name;
+        applyOptions(preset.options);
+        setPresetMessage("Loaded " + preset.name + ".");
+      }
+
+      async function saveCurrentPreset() {
+        const select = document.getElementById("presetSelect");
+        const name = document.getElementById("presetName").value.trim();
+        if (!name) {
+          setPresetMessage("Enter a preset name.");
+          return;
+        }
+
+        const response = await fetch("/api/presets", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id: select.value || undefined, name, options: payload() }),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          setPresetMessage(body.error || "Unable to save preset.");
+          return;
+        }
+
+        await loadPresets();
+        renderPresets(body.id);
+        setPresetMessage("Saved " + body.name + ".");
+      }
+
+      async function deleteSelectedPreset() {
+        const preset = selectedPreset();
+        if (!preset) {
+          setPresetMessage("Choose a preset to delete.");
+          return;
+        }
+
+        const response = await fetch("/api/presets/" + encodeURIComponent(preset.id), { method: "DELETE" });
+        const body = await response.json();
+        if (!response.ok) {
+          setPresetMessage(body.error || "Unable to delete preset.");
+          return;
+        }
+
+        document.getElementById("presetName").value = "";
+        await loadPresets();
+        setPresetMessage("Deleted " + preset.name + ".");
+      }
+
       async function runPreflight() {
         const button = document.getElementById("runPreflight");
         button.disabled = true;
@@ -710,6 +837,10 @@ export function renderUi(): string {
         log.scrollTop = log.scrollHeight;
       }
 
+      function setPresetMessage(text) {
+        document.getElementById("presetMessage").textContent = text;
+      }
+
       function labelFor(action) {
         if (action === "extract") return "URL extraction";
         if (action === "compare") return "comparison";
@@ -752,8 +883,16 @@ export function renderUi(): string {
       document.getElementById("refreshInventory").addEventListener("click", loadInventory);
       document.getElementById("refreshRuns").addEventListener("click", loadHistory);
       document.getElementById("runPreflight").addEventListener("click", runPreflight);
+      document.getElementById("loadPreset").addEventListener("click", loadSelectedPreset);
+      document.getElementById("savePreset").addEventListener("click", saveCurrentPreset);
+      document.getElementById("deletePreset").addEventListener("click", deleteSelectedPreset);
+      document.getElementById("presetSelect").addEventListener("change", () => {
+        const preset = selectedPreset();
+        document.getElementById("presetName").value = preset ? preset.name : "";
+      });
       loadInventory();
       loadHistory();
+      loadPresets();
       runPreflight();
     </script>
   </body>
