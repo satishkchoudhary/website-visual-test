@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Configurable Playwright visual comparison framework for comparing two website domains page by page.",
   "scripts": {
+    "preflight": "tsx src/cli/preflight.ts",
     "visual:ui": "tsx src/server/app.ts",
     "visual:urls": "tsx src/cli/urls.ts",
     "visual:crawl": "tsx src/cli/crawl.ts",

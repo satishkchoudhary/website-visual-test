@@ -8,6 +8,7 @@ import type { UrlInventory, VisualConfig, VisualRunResult } from "../types.js";
 import { extractUrls } from "../urlExtractor.js";
 import { generateReports } from "../report.js";
 import { runVisualTest } from "../visualTest.js";
+import { runPreflight } from "../preflight.js";
 import { renderUi } from "./ui.js";
 
 type JobAction = "extract" | "compare" | "full";
@@ -151,6 +152,11 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 
   if (request.method === "GET" && url.pathname === "/api/runs") {
     sendJson(response, 200, await readRunHistory());
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/preflight") {
+    sendJson(response, 200, await runPreflight({ port, serverAlreadyRunning: true }));
     return;
   }
 

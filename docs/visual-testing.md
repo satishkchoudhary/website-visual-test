@@ -9,6 +9,7 @@ Use Node.js 18 or newer. The repository is checked against Node 18, 20, and 22 i
 ```sh
 npm install
 npx playwright install chromium
+npm run preflight
 ```
 
 Create a local `.env` file if you do not want to pass URLs every time:
@@ -69,12 +70,26 @@ Open:
 http://127.0.0.1:4317/
 ```
 
-The dashboard supports URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
+The dashboard supports system preflight checks, URL extraction, comparison from the current checklist, and the full extract-plus-compare workflow. It serves URL inventories, page checklists, and the latest HTML report from the same generated folders used by the CLI.
 
 Use a dry run to verify configuration without launching the browser:
 
 ```sh
 npm run visual:crawl -- --baseline=https://example.com --target=https://preview.example.com --dry-run --json
+```
+
+## Preflight
+
+Run preflight before handing the project to a new user or machine:
+
+```sh
+npm run preflight
+```
+
+The check verifies Node.js version, installed dependencies, Playwright Chromium, writable output folders, and dashboard port status. Use JSON output for automation:
+
+```sh
+npm run preflight -- --json
 ```
 
 ## URL Extraction Step

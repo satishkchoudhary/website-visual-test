@@ -259,6 +259,53 @@ export function renderUi(): string {
         gap: 10px;
         margin-top: 12px;
       }
+      .preflight-list {
+        display: grid;
+        gap: 8px;
+      }
+      .preflight-row {
+        display: grid;
+        grid-template-columns: 72px minmax(120px, 180px) 1fr;
+        gap: 10px;
+        align-items: start;
+        border: 1px solid #e5ebf3;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fff;
+        font-size: 13px;
+      }
+      .preflight-state {
+        border-radius: 999px;
+        padding: 3px 8px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .preflight-state.pass {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .preflight-state.warn {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .preflight-state.fail {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .preflight-label {
+        font-weight: 800;
+      }
+      .preflight-detail {
+        color: #475467;
+        overflow-wrap: anywhere;
+      }
+      .preflight-detail small {
+        display: block;
+        margin-top: 4px;
+        color: #667085;
+      }
       .table-wrap {
         overflow: auto;
         max-height: 460px;
@@ -397,6 +444,18 @@ export function renderUi(): string {
                 <a class="link-button" href="/visual/urls.md" target="_blank" rel="noreferrer">URL Inventory</a>
                 <a class="link-button" href="/visual/pages.md" target="_blank" rel="noreferrer">Checklist</a>
                 <a class="link-button" href="/reports/latest/index.html" target="_blank" rel="noreferrer">Latest Report</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" style="margin-top: 18px;">
+            <div class="job-head">
+              <h2>System Check</h2>
+              <button type="button" id="runPreflight">Run Preflight</button>
+            </div>
+            <div class="panel-body">
+              <div id="preflightRows" class="preflight-list">
+                <div class="empty">Preflight has not run yet.</div>
               </div>
             </div>
           </section>
@@ -575,7 +634,7 @@ export function renderUi(): string {
 
         rows.innerHTML = runs.map((run) => (
           '<tr>' +
-          '<td><code>' + escapeHtml(run.id) + '</code><br><small>' + escapeHtml(shortUrl(run.baselineUrl)) + ' vs ' + escapeHtml(shortUrl(run.targetUrl)) + '</small></td>' +
+          '<td><code>' + escapeHtml(run.id) + '</code><br><small>' + run.comparisons + ' visual checks</small></td>' +
           '<td>' + escapeHtml(formatDate(run.completedAt)) + '</td>' +
           '<td>' + run.pages + '<br><small>' + run.comparisons + ' checks</small></td>' +
           '<td>' + run.passed + '</td>' +
@@ -583,6 +642,38 @@ export function renderUi(): string {
           '<td>' + run.errors + '</td>' +
           '<td><a href="' + escapeAttr(run.reportPath) + '" target="_blank" rel="noreferrer">Report</a><br><a href="' + escapeAttr(run.summaryPath) + '" target="_blank" rel="noreferrer">Summary</a></td>' +
           '</tr>'
+        )).join("");
+      }
+
+      async function runPreflight() {
+        const button = document.getElementById("runPreflight");
+        button.disabled = true;
+        document.getElementById("preflightRows").innerHTML = '<div class="empty">Running checks...</div>';
+
+        try {
+          const response = await fetch("/api/preflight");
+          const result = await response.json();
+          renderPreflight(result);
+        } catch (error) {
+          document.getElementById("preflightRows").innerHTML = '<div class="empty">Unable to run preflight.</div>';
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      function renderPreflight(result) {
+        const rows = document.getElementById("preflightRows");
+        if (!result.checks || !result.checks.length) {
+          rows.innerHTML = '<div class="empty">No checks returned.</div>';
+          return;
+        }
+
+        rows.innerHTML = result.checks.map((check) => (
+          '<div class="preflight-row">' +
+          '<span class="preflight-state ' + escapeAttr(check.status) + '">' + escapeHtml(check.status) + '</span>' +
+          '<span class="preflight-label">' + escapeHtml(check.label) + '</span>' +
+          '<span class="preflight-detail">' + escapeHtml(check.detail) + (check.help ? '<small>' + escapeHtml(check.help) + '</small>' : '') + '</span>' +
+          '</div>'
         )).join("");
       }
 
@@ -655,21 +746,15 @@ export function renderUi(): string {
         return date.toLocaleString();
       }
 
-      function shortUrl(value) {
-        try {
-          return new URL(value).host;
-        } catch {
-          return value || "";
-        }
-      }
-
       document.querySelectorAll("button[data-action]").forEach((button) => {
         button.addEventListener("click", () => startJob(button.dataset.action));
       });
       document.getElementById("refreshInventory").addEventListener("click", loadInventory);
       document.getElementById("refreshRuns").addEventListener("click", loadHistory);
+      document.getElementById("runPreflight").addEventListener("click", runPreflight);
       loadInventory();
       loadHistory();
+      runPreflight();
     </script>
   </body>
 </html>`;

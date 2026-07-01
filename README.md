@@ -9,6 +9,7 @@ Use Node.js 18 or newer. The project is tested against Node 18, 20, and 22.
 ```sh
 npm install
 npx playwright install chromium
+npm run preflight
 npm run visual:ui
 npm run visual:all -- --baseline=https://satishkchoudhary.com --target=http://localhost:3000
 ```
@@ -53,8 +54,19 @@ The dashboard lets users:
 - Run comparison from the current URL checklist.
 - Run the full Extract + Compare workflow.
 - Watch a live progress bar, current step, and timestamped job log.
+- Run a system preflight check from the UI.
 - Review URL inventory and past test runs.
 - Open the latest report, historical reports, and Markdown summaries.
+
+## Preflight
+
+Run this before handing the tool to a new user or machine:
+
+```sh
+npm run preflight
+```
+
+The check verifies Node.js version, installed dependencies, Playwright Chromium, writable output folders, and dashboard port status. The dashboard also runs the same check in **System Check**.
 
 ## Node Compatibility
 
@@ -69,6 +81,7 @@ Compatibility choices:
 ## Commands
 
 ```sh
+npm run preflight
 npm run visual:ui
 npm run visual:urls
 npm run visual:crawl
