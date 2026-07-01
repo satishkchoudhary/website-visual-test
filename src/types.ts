@@ -91,6 +91,11 @@ export interface ScreenshotPaths {
   diff: string;
 }
 
+export interface FinalUrls {
+  baseline: string;
+  target: string;
+}
+
 export interface ComparisonMetadata {
   path: string;
   baselineUrl: string;
@@ -98,11 +103,13 @@ export interface ComparisonMetadata {
   viewport: VisualViewport;
   timestamp: string;
   screenshotPaths: ScreenshotPaths;
+  finalUrls?: FinalUrls;
   browser: string;
   status: ComparisonStatus;
   mismatchPercentage: number;
   threshold: number;
   attempts: number;
+  durationMs?: number;
   error?: string;
 }
 

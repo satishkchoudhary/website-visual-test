@@ -362,6 +362,20 @@ export function renderUi(): string {
       .result-links a {
         font-weight: 800;
       }
+      .url-pair {
+        display: grid;
+        gap: 6px;
+        min-width: 220px;
+      }
+      .url-pair span {
+        color: #475467;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .url-pair a {
+        overflow-wrap: anywhere;
+      }
       .table-wrap {
         overflow: auto;
         max-height: 460px;
@@ -536,14 +550,16 @@ export function renderUi(): string {
                 <thead>
                   <tr>
                     <th>Page</th>
+                    <th>Final URLs</th>
                     <th>Viewport</th>
                     <th>Status</th>
                     <th>Mismatch</th>
+                    <th>Time</th>
                     <th>Evidence</th>
                   </tr>
                 </thead>
                 <tbody id="liveResultRows">
-                  <tr><td class="empty" colspan="5">No comparison results yet.</td></tr>
+                  <tr><td class="empty" colspan="7">No comparison results yet.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -732,7 +748,7 @@ export function renderUi(): string {
 
         if (!liveResults) {
           summary.textContent = "0/0";
-          rows.innerHTML = '<tr><td class="empty" colspan="5">No comparison results yet.</td></tr>';
+          rows.innerHTML = '<tr><td class="empty" colspan="7">No comparison results yet.</td></tr>';
           return;
         }
 
@@ -741,19 +757,31 @@ export function renderUi(): string {
         summary.textContent = completed + "/" + total;
 
         if (!liveResults.results || !liveResults.results.length) {
-          rows.innerHTML = '<tr><td class="empty" colspan="5">' + (status === "running" ? "Waiting for first result." : "No comparison results yet.") + '</td></tr>';
+          rows.innerHTML = '<tr><td class="empty" colspan="7">' + (status === "running" ? "Waiting for first result." : "No comparison results yet.") + '</td></tr>';
           return;
         }
 
         rows.innerHTML = liveResults.results.slice().reverse().slice(0, 150).map((item) => (
           '<tr>' +
-          '<td><code>' + escapeHtml(item.path) + '</code><br><small><a href="' + escapeAttr(item.baselineUrl) + '" target="_blank" rel="noreferrer">Baseline</a> / <a href="' + escapeAttr(item.targetUrl) + '" target="_blank" rel="noreferrer">Target</a></small></td>' +
+          '<td><code>' + escapeHtml(item.path) + '</code></td>' +
+          '<td>' + renderFinalUrls(item) + '</td>' +
           '<td>' + escapeHtml(item.viewport) + '<br><small>' + escapeHtml(item.viewportSize) + '</small></td>' +
           '<td><span class="result-status ' + escapeAttr(item.status) + '">' + escapeHtml(item.status) + '</span></td>' +
           '<td>' + formatPercent(item.mismatchPercentage) + '<br><small>attempts: ' + escapeHtml(item.attempts) + '</small></td>' +
+          '<td>' + formatDuration(item.durationMs) + '</td>' +
           '<td>' + renderEvidenceLinks(item) + '</td>' +
           '</tr>'
         )).join("");
+      }
+
+      function renderFinalUrls(item) {
+        const finalUrls = item.finalUrls || {};
+        const baseline = finalUrls.baseline || item.baselineUrl || "";
+        const target = finalUrls.target || item.targetUrl || "";
+        return '<span class="url-pair">' +
+          '<span>Baseline</span><a href="' + escapeAttr(baseline) + '" target="_blank" rel="noreferrer">' + escapeHtml(baseline || "-") + '</a>' +
+          '<span>Target</span><a href="' + escapeAttr(target) + '" target="_blank" rel="noreferrer">' + escapeHtml(target || "-") + '</a>' +
+          '</span>';
       }
 
       function renderEvidenceLinks(item) {
@@ -1000,6 +1028,13 @@ export function renderUi(): string {
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return "-";
         return (parsed * 100).toFixed(2) + "%";
+      }
+
+      function formatDuration(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return "-";
+        if (parsed < 1000) return Math.round(parsed) + " ms";
+        return (parsed / 1000).toFixed(parsed < 10000 ? 2 : 1) + " s";
       }
 
       document.querySelectorAll("button[data-action]").forEach((button) => {

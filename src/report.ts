@@ -252,6 +252,20 @@ function renderHtmlReport(run: VisualRunResult): string {
         border-radius: 4px;
         padding: 2px 4px;
       }
+      .url-pair {
+        display: grid;
+        gap: 6px;
+        min-width: 240px;
+      }
+      .url-pair span {
+        color: #49566a;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      .url-pair a {
+        overflow-wrap: anywhere;
+      }
       @media (max-width: 760px) {
         header, main {
           padding: 16px;
@@ -310,9 +324,11 @@ function renderHtmlReport(run: VisualRunResult): string {
         <thead>
           <tr>
             <th>Page</th>
+            <th>Final URLs</th>
             <th>Viewport</th>
             <th>Status</th>
             <th>Mismatch</th>
+            <th>Time</th>
             <th>Evidence</th>
           </tr>
         </thead>
@@ -411,14 +427,17 @@ function renderHtmlReport(run: VisualRunResult): string {
 function renderMarkdownReport(run: VisualRunResult): string {
   const failed = run.results.filter((result) => result.status === "failed" || result.status === "error");
   const failedRows = failed.length
-    ? failed.map((result) => `| ${result.path} | ${result.viewport.name} | ${result.status} | ${formatPercent(result.mismatchPercentage)} | ${result.error ?? ""} |`).join("\n")
-    : "| None | - | passed | 0% | No failed comparisons. |";
+    ? failed.map((result) => `| ${result.path} | ${result.viewport.name} | ${result.status} | ${formatPercent(result.mismatchPercentage)} | ${formatDuration(result.durationMs)} | ${result.error ?? ""} |`).join("\n")
+    : "| None | - | passed | 0% | - | No failed comparisons. |";
 
   const details = run.results.map((result) => [
     `### ${result.path} - ${result.viewport.name}`,
     "",
     `- Status: ${result.status}`,
     `- Mismatch: ${formatPercent(result.mismatchPercentage)}`,
+    `- Duration: ${formatDuration(result.durationMs)}`,
+    `- Final baseline URL: ${finalUrlsFor(result).baseline}`,
+    `- Final target URL: ${finalUrlsFor(result).target}`,
     `- Baseline screenshot: ${result.screenshotPaths.baseline}`,
     `- Target screenshot: ${result.screenshotPaths.target}`,
     `- Diff screenshot: ${result.screenshotPaths.diff}`,
@@ -450,8 +469,8 @@ function renderMarkdownReport(run: VisualRunResult): string {
     "",
     "## Failed Pages",
     "",
-    "| Page | Viewport | Status | Mismatch | Notes |",
-    "| --- | --- | --- | ---: | --- |",
+    "| Page | Viewport | Status | Mismatch | Duration | Notes |",
+    "| --- | --- | --- | ---: | ---: | --- |",
     failedRows,
     "",
     "## Tested Pages",
@@ -472,10 +491,12 @@ function renderMarkdownReport(run: VisualRunResult): string {
 
 function resultRow(runDir: string, result: ComparisonResult): string {
   return `<tr>
-  <td><a href="${escapeAttr(result.baselineUrl)}">${escapeHtml(result.path)}</a></td>
+  <td>${escapeHtml(result.path)}</td>
+  <td>${finalUrlsCell(result)}</td>
   <td>${escapeHtml(result.viewport.name)}<br><small>${result.viewport.width}x${result.viewport.height}</small></td>
   <td class="status-${escapeAttr(result.status)}">${escapeHtml(statusLabel(result))}</td>
   <td>${formatPercent(result.mismatchPercentage)}<br><small>attempts: ${result.attempts}</small></td>
+  <td>${formatDuration(result.durationMs)}</td>
   <td>
     <div class="shots">
       ${figure("Baseline", runDir, result.screenshotPaths.baseline)}
@@ -484,6 +505,21 @@ function resultRow(runDir: string, result: ComparisonResult): string {
     </div>
   </td>
 </tr>`;
+}
+
+function finalUrlsCell(result: ComparisonResult): string {
+  const finalUrls = finalUrlsFor(result);
+  return `<span class="url-pair">
+  <span>Baseline</span><a href="${escapeAttr(finalUrls.baseline)}">${escapeHtml(finalUrls.baseline)}</a>
+  <span>Target</span><a href="${escapeAttr(finalUrls.target)}">${escapeHtml(finalUrls.target)}</a>
+</span>`;
+}
+
+function finalUrlsFor(result: ComparisonResult): { baseline: string; target: string } {
+  return {
+    baseline: result.finalUrls?.baseline || result.baselineUrl,
+    target: result.finalUrls?.target || result.targetUrl,
+  };
 }
 
 function figure(label: string, runDir: string, filePath: string): string {
@@ -508,6 +544,12 @@ function statusLabel(result: ComparisonResult): string {
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatDuration(value: number | undefined): string {
+  if (!Number.isFinite(value)) return "-";
+  if ((value ?? 0) < 1000) return `${Math.round(value ?? 0)} ms`;
+  return `${((value ?? 0) / 1000).toFixed((value ?? 0) < 10000 ? 2 : 1)} s`;
 }
 
 function escapeHtml(value: string): string {

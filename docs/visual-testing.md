@@ -49,6 +49,8 @@ The local dashboard can export any generated run as a ZIP bundle. ZIP bundles in
 
 During a comparison, the dashboard also fills **Live Results** as each page and viewport finishes, so reviewers can open available screenshots before the final report is generated.
 
+Each comparison row includes the final post-redirect baseline and target URLs plus the time taken for that page/viewport check.
+
 ## Commands
 
 ```sh
@@ -267,6 +269,8 @@ visual-test-results/
 ```
 
 Open `index.html` for a reviewer-friendly report. Use `summary.md` for GitHub comments or manual sharing.
+
+Per-comparison metadata includes requested URLs, final post-redirect URLs, mismatch percentage, attempts, duration, screenshot paths, and status.
 
 ## Troubleshooting
 

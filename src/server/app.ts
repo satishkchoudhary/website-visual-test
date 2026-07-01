@@ -52,9 +52,14 @@ interface LiveComparisonResult {
   status: string;
   mismatchPercentage: number;
   attempts: number;
+  durationMs?: number;
   error?: string;
   baselineUrl: string;
   targetUrl: string;
+  finalUrls?: {
+    baseline: string;
+    target: string;
+  };
   screenshots?: {
     baseline: string;
     target: string;
@@ -360,9 +365,14 @@ function toLiveComparisonResult(config: VisualConfig, result: ComparisonResult):
     status: result.status,
     mismatchPercentage: result.mismatchPercentage,
     attempts: result.attempts,
+    durationMs: result.durationMs,
     ...(result.error ? { error: result.error } : {}),
     baselineUrl: result.baselineUrl,
     targetUrl: result.targetUrl,
+    finalUrls: result.finalUrls ?? {
+      baseline: result.baselineUrl,
+      target: result.targetUrl,
+    },
     screenshots: result.status === "passed" || result.status === "failed"
       ? {
           baseline: reportAssetUrl(config, result.screenshotPaths.baseline),

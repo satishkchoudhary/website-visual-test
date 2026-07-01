@@ -88,6 +88,7 @@ async function comparePageViewport(
   pageEntry: PageEntry,
   viewport: VisualViewport,
 ): Promise<ComparisonResult> {
+  const comparisonStartedAt = Date.now();
   const dir = comparisonDir(runDir, pageEntry.path, viewport.name);
   await ensureDir(dir);
 
@@ -97,9 +98,24 @@ async function comparePageViewport(
     diff: path.join(dir, "diff.png"),
   };
   const metadataPath = path.join(dir, "metadata.json");
+  const finalUrls = {
+    baseline: pageEntry.baselineUrl,
+    target: pageEntry.targetUrl,
+  };
 
   if (pageEntry.status !== "ready") {
-    const skipped = metadata(pageEntry, viewport, screenshotPaths, "skipped", 0, config.threshold, 0, pageEntry.notes);
+    const skipped = metadata(
+      pageEntry,
+      viewport,
+      screenshotPaths,
+      "skipped",
+      0,
+      config.threshold,
+      0,
+      finalUrls,
+      elapsedMs(comparisonStartedAt),
+      pageEntry.notes,
+    );
     await writeJson(metadataPath, skipped);
     return { ...skipped, metadataPath };
   }
@@ -111,8 +127,8 @@ async function comparePageViewport(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      await captureScreenshot(browser, config, viewport, pageEntry.baselineUrl, screenshotPaths.baseline);
-      await captureScreenshot(browser, config, viewport, pageEntry.targetUrl, screenshotPaths.target);
+      finalUrls.baseline = await captureScreenshot(browser, config, viewport, pageEntry.baselineUrl, screenshotPaths.baseline);
+      finalUrls.target = await captureScreenshot(browser, config, viewport, pageEntry.targetUrl, screenshotPaths.target);
       const diff = await comparePngFiles(
         screenshotPaths.baseline,
         screenshotPaths.target,
@@ -132,6 +148,8 @@ async function comparePageViewport(
           lastMismatch,
           config.threshold,
           attempt,
+          finalUrls,
+          elapsedMs(comparisonStartedAt),
           lastError,
         );
         await writeJson(metadataPath, result);
@@ -149,6 +167,8 @@ async function comparePageViewport(
           lastMismatch,
           config.threshold,
           attempt,
+          finalUrls,
+          elapsedMs(comparisonStartedAt),
           lastError,
         );
         await writeJson(metadataPath, result);
@@ -157,7 +177,18 @@ async function comparePageViewport(
     }
   }
 
-  const result = metadata(pageEntry, viewport, screenshotPaths, lastStatus, lastMismatch, config.threshold, maxAttempts, lastError);
+  const result = metadata(
+    pageEntry,
+    viewport,
+    screenshotPaths,
+    lastStatus,
+    lastMismatch,
+    config.threshold,
+    maxAttempts,
+    finalUrls,
+    elapsedMs(comparisonStartedAt),
+    lastError,
+  );
   await writeJson(metadataPath, result);
   return { ...result, metadataPath };
 }
@@ -168,7 +199,7 @@ async function captureScreenshot(
   viewport: VisualViewport,
   url: string,
   filePath: string,
-): Promise<void> {
+): Promise<string> {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: 1,
@@ -184,6 +215,7 @@ async function captureScreenshot(
       animations: "disabled",
       mask: await screenshotMaskLocators(page, config),
     });
+    return page.url();
   } finally {
     await context.close();
   }
@@ -197,6 +229,8 @@ function metadata(
   mismatchPercentage: number,
   threshold: number,
   attempts: number,
+  finalUrls: ComparisonMetadata["finalUrls"],
+  durationMs: number,
   error = "",
 ): ComparisonMetadata {
   return {
@@ -206,13 +240,19 @@ function metadata(
     viewport,
     timestamp: new Date().toISOString(),
     screenshotPaths,
+    finalUrls,
     browser: "chromium",
     status,
     mismatchPercentage,
     threshold,
     attempts,
+    durationMs,
     ...(error ? { error } : {}),
   };
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Date.now() - startedAt);
 }
 
 function summarizeResults(pageCount: number, results: ComparisonResult[]): VisualRunResult["summary"] {
