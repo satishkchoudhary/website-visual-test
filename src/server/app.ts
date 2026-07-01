@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import path from "node:path";
 import { loadVisualConfig } from "../config/loadConfig.js";
 import { readJson } from "../lib/files.js";
-import type { UrlInventory, VisualConfig, VisualRunResult } from "../types.js";
+import type { ComparisonResult, RunSummary, UrlInventory, VisualConfig, VisualRunResult } from "../types.js";
 import { extractUrls } from "../urlExtractor.js";
 import { generateReports } from "../report.js";
 import { runVisualTest } from "../visualTest.js";
@@ -24,6 +24,7 @@ interface JobRecord {
   updatedAt: string;
   progress: JobProgress;
   logs: string[];
+  liveResults?: LiveResultsState;
   result?: unknown;
   error?: string;
 }
@@ -34,6 +35,32 @@ interface JobProgress {
   detail: string;
   completed?: number;
   total?: number;
+}
+
+interface LiveResultsState {
+  completed: number;
+  total: number;
+  summary: RunSummary;
+  results: LiveComparisonResult[];
+  updatedAt: string;
+}
+
+interface LiveComparisonResult {
+  path: string;
+  viewport: string;
+  viewportSize: string;
+  status: string;
+  mismatchPercentage: number;
+  attempts: number;
+  error?: string;
+  baselineUrl: string;
+  targetUrl: string;
+  screenshots?: {
+    baseline: string;
+    target: string;
+    diff: string;
+  };
+  completedAt: string;
 }
 
 interface JobOptions {
@@ -231,6 +258,7 @@ async function runJob(job: JobRecord, options: JobOptions): Promise<void> {
 
   if (job.action === "full") {
     const inventory = await extractForJob(job, config, 12, 28);
+    job.result = { inventory };
     const visualRun = await compareForJob(job, config, 30, 88);
     setProgress(job, 94, "Creating report", "Writing HTML and Markdown reports.", { log: true });
     const reports = await generateReports(config, visualRun);
@@ -261,6 +289,7 @@ async function extractForJob(job: JobRecord, config: VisualConfig, startPercent:
 
 async function compareForJob(job: JobRecord, config: VisualConfig, startPercent: number, endPercent: number): Promise<VisualRunResult> {
   setProgress(job, startPercent, "Loading checklist", "Preparing screenshot queue.", { log: true });
+  job.liveResults = createLiveResultsState();
 
   return runVisualTest(config, {
     onProgress: (event) => {
@@ -270,6 +299,7 @@ async function compareForJob(job: JobRecord, config: VisualConfig, startPercent:
       const detail = `${activeIndex}/${event.total}: ${event.page.path} (${event.viewport.name})`;
 
       if (event.phase === "started") {
+        updateLiveResultsTotals(job, event.completed, event.total);
         setProgress(job, percent, "Capturing screenshots", detail, {
           completed: event.completed,
           total: event.total,
@@ -278,6 +308,7 @@ async function compareForJob(job: JobRecord, config: VisualConfig, startPercent:
       }
 
       const resultStatus = event.result?.status || "completed";
+      if (event.result) recordLiveResult(job, config, event.result, event.completed, event.total);
       setProgress(job, percent, `Compared ${event.completed}/${event.total}`, `${event.page.path} (${event.viewport.name}) ${resultStatus}.`, {
         completed: event.completed,
         log: true,
@@ -285,6 +316,92 @@ async function compareForJob(job: JobRecord, config: VisualConfig, startPercent:
       });
     },
   });
+}
+
+function createLiveResultsState(): LiveResultsState {
+  return {
+    completed: 0,
+    total: 0,
+    summary: emptySummary(),
+    results: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function updateLiveResultsTotals(job: JobRecord, completed: number, total: number): void {
+  const liveResults = job.liveResults ?? createLiveResultsState();
+  liveResults.completed = completed;
+  liveResults.total = total;
+  liveResults.updatedAt = new Date().toISOString();
+  job.liveResults = liveResults;
+}
+
+function recordLiveResult(
+  job: JobRecord,
+  config: VisualConfig,
+  result: ComparisonResult,
+  completed: number,
+  total: number,
+): void {
+  const liveResults = job.liveResults ?? createLiveResultsState();
+  liveResults.completed = completed;
+  liveResults.total = total;
+  liveResults.results.push(toLiveComparisonResult(config, result));
+  liveResults.summary = summarizeLiveResults(liveResults.results);
+  liveResults.updatedAt = new Date().toISOString();
+  job.liveResults = liveResults;
+}
+
+function toLiveComparisonResult(config: VisualConfig, result: ComparisonResult): LiveComparisonResult {
+  return {
+    path: result.path,
+    viewport: result.viewport.name,
+    viewportSize: `${result.viewport.width}x${result.viewport.height}`,
+    status: result.status,
+    mismatchPercentage: result.mismatchPercentage,
+    attempts: result.attempts,
+    ...(result.error ? { error: result.error } : {}),
+    baselineUrl: result.baselineUrl,
+    targetUrl: result.targetUrl,
+    screenshots: result.status === "passed" || result.status === "failed"
+      ? {
+          baseline: reportAssetUrl(config, result.screenshotPaths.baseline),
+          target: reportAssetUrl(config, result.screenshotPaths.target),
+          diff: reportAssetUrl(config, result.screenshotPaths.diff),
+        }
+      : undefined,
+    completedAt: result.timestamp,
+  };
+}
+
+function summarizeLiveResults(results: LiveComparisonResult[]): RunSummary {
+  return {
+    pages: new Set(results.map((result) => result.path)).size,
+    comparisons: results.length,
+    passed: results.filter((result) => result.status === "passed").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    skipped: results.filter((result) => result.status === "skipped").length,
+    errors: results.filter((result) => result.status === "error").length,
+  };
+}
+
+function emptySummary(): RunSummary {
+  return {
+    pages: 0,
+    comparisons: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    errors: 0,
+  };
+}
+
+function reportAssetUrl(config: VisualConfig, filePath: string): string {
+  const outputRoot = path.resolve(root, config.outputDir);
+  const absolutePath = path.resolve(filePath);
+  const relativePath = path.relative(outputRoot, absolutePath);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) return "";
+  return `/reports/${relativePath.split(path.sep).map(encodeURIComponent).join("/")}`;
 }
 
 async function configFromOptions(options: JobOptions): Promise<VisualConfig> {

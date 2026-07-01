@@ -328,6 +328,40 @@ export function renderUi(): string {
         margin-top: 4px;
         color: #667085;
       }
+      .live-summary {
+        color: #475467;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .result-status {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .result-status.passed {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .result-status.failed,
+      .result-status.error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .result-status.skipped {
+        background: #ede9fe;
+        color: #5b21b6;
+      }
+      .result-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .result-links a {
+        font-weight: 800;
+      }
       .table-wrap {
         overflow: auto;
         max-height: 460px;
@@ -494,6 +528,29 @@ export function renderUi(): string {
 
           <section class="panel" style="margin-top: 18px;">
             <div class="job-head">
+              <h2>Live Results</h2>
+              <span id="liveSummary" class="live-summary">0/0</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Page</th>
+                    <th>Viewport</th>
+                    <th>Status</th>
+                    <th>Mismatch</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody id="liveResultRows">
+                  <tr><td class="empty" colspan="5">No comparison results yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel" style="margin-top: 18px;">
+            <div class="job-head">
               <h2>System Check</h2>
               <button type="button" id="runPreflight">Run Preflight</button>
             </div>
@@ -604,6 +661,7 @@ export function renderUi(): string {
         setProgress({ percent: 3, label: "Starting", detail: labelFor(action) + " is being queued." }, "running");
         setLog("Starting " + labelFor(action) + "...");
         setBadge("running");
+        renderLiveResults(null);
 
         const response = await fetch("/api/jobs", {
           method: "POST",
@@ -650,16 +708,64 @@ export function renderUi(): string {
         setBadge(job.status);
         setProgress(job.progress, job.status);
         setLog(job.logs.join("\\n") || job.status);
+        renderLiveResults(job.liveResults || null, job.status);
 
         const result = job.result || {};
         if (result.inventory) {
           document.getElementById("urlCount").textContent = result.inventory.urls.length;
+        }
+        if (job.liveResults && job.liveResults.summary) {
+          document.getElementById("passedCount").textContent = job.liveResults.summary.passed;
+          document.getElementById("failedCount").textContent = job.liveResults.summary.failed;
+          document.getElementById("errorCount").textContent = job.liveResults.summary.errors;
         }
         if (result.visualRun) {
           document.getElementById("passedCount").textContent = result.visualRun.summary.passed;
           document.getElementById("failedCount").textContent = result.visualRun.summary.failed;
           document.getElementById("errorCount").textContent = result.visualRun.summary.errors;
         }
+      }
+
+      function renderLiveResults(liveResults, status) {
+        const rows = document.getElementById("liveResultRows");
+        const summary = document.getElementById("liveSummary");
+
+        if (!liveResults) {
+          summary.textContent = "0/0";
+          rows.innerHTML = '<tr><td class="empty" colspan="5">No comparison results yet.</td></tr>';
+          return;
+        }
+
+        const total = liveResults.total || 0;
+        const completed = liveResults.completed || 0;
+        summary.textContent = completed + "/" + total;
+
+        if (!liveResults.results || !liveResults.results.length) {
+          rows.innerHTML = '<tr><td class="empty" colspan="5">' + (status === "running" ? "Waiting for first result." : "No comparison results yet.") + '</td></tr>';
+          return;
+        }
+
+        rows.innerHTML = liveResults.results.slice().reverse().slice(0, 150).map((item) => (
+          '<tr>' +
+          '<td><code>' + escapeHtml(item.path) + '</code><br><small><a href="' + escapeAttr(item.baselineUrl) + '" target="_blank" rel="noreferrer">Baseline</a> / <a href="' + escapeAttr(item.targetUrl) + '" target="_blank" rel="noreferrer">Target</a></small></td>' +
+          '<td>' + escapeHtml(item.viewport) + '<br><small>' + escapeHtml(item.viewportSize) + '</small></td>' +
+          '<td><span class="result-status ' + escapeAttr(item.status) + '">' + escapeHtml(item.status) + '</span></td>' +
+          '<td>' + formatPercent(item.mismatchPercentage) + '<br><small>attempts: ' + escapeHtml(item.attempts) + '</small></td>' +
+          '<td>' + renderEvidenceLinks(item) + '</td>' +
+          '</tr>'
+        )).join("");
+      }
+
+      function renderEvidenceLinks(item) {
+        if (!item.screenshots) {
+          return item.error ? '<small>' + escapeHtml(item.error) + '</small>' : "-";
+        }
+
+        return '<span class="result-links">' +
+          '<a href="' + escapeAttr(item.screenshots.baseline) + '" target="_blank" rel="noreferrer">Baseline</a>' +
+          '<a href="' + escapeAttr(item.screenshots.target) + '" target="_blank" rel="noreferrer">Target</a>' +
+          '<a href="' + escapeAttr(item.screenshots.diff) + '" target="_blank" rel="noreferrer">Diff</a>' +
+          '</span>';
       }
 
       async function loadInventory() {
@@ -888,6 +994,12 @@ export function renderUi(): string {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
         return date.toLocaleString();
+      }
+
+      function formatPercent(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return "-";
+        return (parsed * 100).toFixed(2) + "%";
       }
 
       document.querySelectorAll("button[data-action]").forEach((button) => {

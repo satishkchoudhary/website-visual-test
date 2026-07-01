@@ -47,6 +47,8 @@ Reports are still generated when visual differences fail.
 
 The local dashboard can export any generated run as a ZIP bundle. ZIP bundles include the HTML report, Markdown summary, screenshots, diffs, and metadata.
 
+During a comparison, the dashboard also fills **Live Results** as each page and viewport finishes, so reviewers can open available screenshots before the final report is generated.
+
 ## Commands
 
 ```sh
