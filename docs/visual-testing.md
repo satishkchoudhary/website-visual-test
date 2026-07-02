@@ -131,7 +131,7 @@ Available URL sources:
 
 | Source | Behavior |
 | --- | --- |
-| `crawl` | Launches Playwright and follows same-origin links from the baseline URL. |
+| `crawl` | Launches Playwright and follows links from the baseline URL origin, including the final origin after a baseline redirect. |
 | `sitemap` | Fetches configured sitemap XML files and extracts matching paths without launching a browser. |
 | `both` | Reads sitemap URLs and merges them with browser crawl discovery. |
 | `manual` | Uses the relative URL list supplied by the dashboard, `--manual-urls`, `VISUAL_MANUAL_URLS`, or `manualPaths` in config. |
@@ -182,7 +182,7 @@ npm run visual:all -- --baseline=https://example.com --target=https://preview.ex
 
 ## Crawling Rules
 
-The crawler starts from `BASELINE_URL`, follows same-origin links, normalizes duplicate paths, ignores media/static files, and writes:
+The crawler starts from `BASELINE_URL`, follows same-origin links, accepts the final origin after a baseline redirect, normalizes duplicate paths, ignores media/static files, and writes:
 
 ```text
 visual/pages.json

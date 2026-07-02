@@ -57,7 +57,12 @@ export async function crawlPages(config: VisualConfig, options: CrawlOptions = {
         entry.notes = responseNote(response);
         if (response && response.status() >= 400) entry.status = "error";
 
-        const links = await discoverLinks(page, baselineOrigin, config);
+        const allowedOrigins = crawlOrigins(baselineOrigin, page.url());
+        if (allowedOrigins.finalOrigin !== baselineOrigin) {
+          entry.notes = appendNote(entry.notes, `Redirected to ${allowedOrigins.finalOrigin}`);
+        }
+
+        const links = await discoverLinks(page, allowedOrigins.origins, config);
         for (const nextPath of links) {
           if (seen.has(nextPath) || queued.has(nextPath) || pages.length + queue.length >= maxPages) continue;
           queued.add(nextPath);
@@ -91,16 +96,52 @@ export async function writePageManifest(config: VisualConfig, manifest: PageMani
   await writeText(config.pagesMarkdownFile, renderPagesMarkdown(manifest));
 }
 
-async function discoverLinks(page: Page, origin: string, config: VisualConfig): Promise<string[]> {
+async function discoverLinks(page: Page, allowedOrigins: Set<string>, config: VisualConfig): Promise<string[]> {
   const hrefs = await page.$$eval("a[href]", (anchors) => anchors.map((anchor) => (anchor as HTMLAnchorElement).href));
   const paths = new Set<string>();
 
   for (const href of hrefs) {
-    const pathname = normalizeDiscoveredPath(href, origin, config);
+    const pathname = normalizeAllowedDiscoveredPath(href, allowedOrigins, config);
     if (pathname) paths.add(pathname);
   }
 
   return [...paths].sort();
+}
+
+function crawlOrigins(originalOrigin: string, currentUrl: string): { finalOrigin: string; origins: Set<string> } {
+  let finalOrigin = originalOrigin;
+
+  try {
+    finalOrigin = new URL(currentUrl).origin;
+  } catch {
+    // Keep the original origin if Playwright reports an unexpected page URL.
+  }
+
+  return {
+    finalOrigin,
+    origins: new Set([originalOrigin, finalOrigin]),
+  };
+}
+
+function normalizeAllowedDiscoveredPath(
+  rawUrl: string,
+  allowedOrigins: Set<string>,
+  config: VisualConfig,
+): string | null {
+  let url: URL;
+
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  if (!allowedOrigins.has(url.origin)) return null;
+  return normalizeDiscoveredPath(url.toString(), url.origin, config);
+}
+
+function appendNote(note: string, addition: string): string {
+  return [note, addition].filter(Boolean).join("; ");
 }
 
 function responseNote(response: Response | null): string {
